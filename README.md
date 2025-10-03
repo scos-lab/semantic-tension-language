@@ -20,6 +20,10 @@ Unlike traditional data formats, STL introduces a **tension-path model** that al
 
 ---
 
+## Documentation
+
+- [STL Core Specification v1.0](./spec/stl-core-spec-v1.0.md)
+
 ##  Example
 
 ```text
