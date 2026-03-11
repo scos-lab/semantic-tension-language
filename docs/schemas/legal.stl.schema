@@ -1,0 +1,40 @@
+# Legal Reasoning Schema
+# Domain: Laws, regulations, legal precedents, compliance
+#
+# Enforces:
+#   - Prefixed anchor names for legal entity types
+#   - Source provenance mandatory (legal code references)
+#   - High confidence floor (0.7) — legal statements need authority
+#
+# Example:
+#   [Law:Law_Article_301] → [Law:Regulation_DataPrivacy] ::mod(
+#     rule="definitional", confidence=0.95,
+#     source="legal_code://GDPR/Article301",
+#     domain="data_protection", time="2018-05-25"
+#   )
+
+schema LegalReasoning v1.0 {
+
+    namespace "Law"
+
+    anchor source {
+        pattern: /(Law|Regulation|Precedent|Court|Article|Section|Principle|Right|Obligation)_[A-Za-z0-9_]+/
+    }
+
+    anchor target {
+        pattern: /(Law|Regulation|Precedent|Court|Article|Section|Principle|Right|Obligation|Effect|Penalty|Outcome)_[A-Za-z0-9_]+/
+    }
+
+    modifier {
+        required: [confidence, rule, source]
+        optional: [domain, time, author, location, timestamp]
+
+        confidence: float(0.7, 1.0)
+        rule: enum("definitional", "logical", "causal", "empirical")
+    }
+
+    constraints {
+        min_statements: 1
+        max_statements: 500
+    }
+}

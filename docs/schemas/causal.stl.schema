@@ -1,0 +1,42 @@
+# Causal Inference Schema
+# Domain: Causal analysis, cause-effect chains, conditionality
+#
+# Enforces:
+#   - Strength required for all causal claims
+#   - Conditionality recommended for precise causal semantics
+#   - Moderate confidence floor (0.3)
+#
+# Example:
+#   [Heavy_Rain] → [Urban_Flooding] ::mod(
+#     rule="causal", confidence=0.85, strength=0.80,
+#     conditionality="Sufficient", location="Urban_Area"
+#   )
+
+schema CausalInference v1.0 {
+
+    namespace "Causal"
+
+    anchor source {
+        pattern: /[A-Za-z0-9_]+/
+    }
+
+    anchor target {
+        pattern: /[A-Za-z0-9_]+/
+    }
+
+    modifier {
+        required: [confidence, rule, strength]
+        optional: [conditionality, cause, effect, source, time, location]
+
+        confidence: float(0.3, 1.0)
+        strength: float(0.0, 1.0)
+        rule: enum("causal")
+        conditionality: enum("Sufficient", "Necessary", "Both")
+    }
+
+    constraints {
+        min_statements: 1
+        max_statements: 500
+        allow_cycles: false
+    }
+}

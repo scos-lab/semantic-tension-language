@@ -1,0 +1,42 @@
+# Medical/Clinical Schema
+# Domain: Medical knowledge — symptoms, drugs, diagnoses, treatments
+#
+# Enforces:
+#   - Prefixed anchor names for type safety (Symptom_, Drug_, Diagnosis_, etc.)
+#   - High confidence floor (0.5) — medical claims need solid evidence
+#   - Source provenance mandatory
+#   - Domain field mandatory
+#
+# Example:
+#   [Med:Drug_Aspirin] → [Med:Effect_AntiInflammatory] ::mod(
+#     rule="causal", confidence=0.92, strength=0.88,
+#     source="doi:10.1234/pharma", domain="pharmacology"
+#   )
+
+schema MedicalClinical v1.0 {
+
+    namespace "Med"
+
+    anchor source {
+        pattern: /(Symptom|Drug|Diagnosis|Treatment|Effect|Condition|Organ|Test)_[A-Za-z0-9_]+/
+    }
+
+    anchor target {
+        pattern: /(Symptom|Drug|Diagnosis|Treatment|Effect|Condition|Organ|Test|Result|State)_[A-Za-z0-9_]+/
+    }
+
+    modifier {
+        required: [confidence, rule, source, domain]
+        optional: [strength, author, timestamp, location, conditionality]
+
+        confidence: float(0.5, 1.0)
+        strength: float(0.0, 1.0)
+        rule: enum("causal", "empirical", "definitional")
+        domain: string
+    }
+
+    constraints {
+        min_statements: 1
+        max_statements: 500
+    }
+}
