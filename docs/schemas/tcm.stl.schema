@@ -1,0 +1,40 @@
+# Traditional Chinese Medicine (TCM) Schema
+# Domain: 中医学 — Classical and modern TCM knowledge representation
+#
+# Supports:
+#   - Chinese Unicode anchor names (黄帝内经, 素问, 湿邪, etc.)
+#   - Latin anchor names (Five_Element_Theory, etc.)
+#   - Required provenance for knowledge traceability
+#
+# Example:
+#   [TCM:湿邪] → [TCM:苦味药] ::mod(
+#     confidence=0.85, rule="causal", domain="TCM",
+#     source="黄帝内经·素问", principle="燥湿除浊"
+#   )
+
+schema TraditionalChineseMedicine v1.0 {
+
+    namespace "TCM"
+
+    anchor source {
+        pattern: /[A-Za-z0-9_\u4e00-\u9fff\u3400-\u4dbf]+/
+    }
+
+    anchor target {
+        pattern: /[A-Za-z0-9_\u4e00-\u9fff\u3400-\u4dbf]+/
+    }
+
+    modifier {
+        required: [confidence, rule, domain]
+        optional: [source, author, time, principle, location]
+
+        confidence: float(0.5, 1.0)
+        rule: enum("causal", "definitional", "empirical", "logical")
+        domain: string
+    }
+
+    constraints {
+        min_statements: 1
+        max_statements: 500
+    }
+}

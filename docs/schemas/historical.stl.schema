@@ -1,0 +1,40 @@
+# Historical Knowledge Schema
+# Domain: Historical events, eras, figures, and relationships
+#
+# Enforces:
+#   - Temporal context required (time field)
+#   - Source provenance required for traceability
+#   - Unicode support for non-Latin historical records
+#
+# Example:
+#   [黄帝内经] → [西汉] ::mod(
+#     rule="empirical", confidence=0.82,
+#     time="-0026-01-01T00:00:00Z",
+#     source="历史文献考证", domain="history"
+#   )
+
+schema HistoricalKnowledge v1.0 {
+
+    namespace "History"
+
+    anchor source {
+        pattern: /[A-Za-z0-9_\u4e00-\u9fff\u0600-\u06ff\u0400-\u04ff]+/
+    }
+
+    anchor target {
+        pattern: /[A-Za-z0-9_\u4e00-\u9fff\u0600-\u06ff\u0400-\u04ff]+/
+    }
+
+    modifier {
+        required: [confidence, time, source]
+        optional: [rule, author, location, domain, timestamp]
+
+        confidence: float(0.3, 1.0)
+        rule: enum("causal", "empirical", "logical", "definitional")
+    }
+
+    constraints {
+        min_statements: 1
+        max_statements: 1000
+    }
+}

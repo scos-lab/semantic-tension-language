@@ -1,0 +1,42 @@
+# Scientific Research Schema
+# Domain: Scientific claims, theories, experiments, and observations
+#
+# Enforces:
+#   - Source provenance (DOI, paper reference) required
+#   - High confidence floor (0.3) — even speculative claims need calibration
+#   - Rule type required for semantic classification
+#
+# Example:
+#   [Theory_Relativity] → [Prediction_TimeDilation] ::mod(
+#     rule="logical", confidence=0.99, certainty=0.98,
+#     source="doi:10.1002/andp.19053221004", author="Einstein",
+#     domain="physics"
+#   )
+
+schema ScientificResearch v1.0 {
+
+    namespace "Science"
+
+    anchor source {
+        pattern: /[A-Za-z0-9_]+/
+    }
+
+    anchor target {
+        pattern: /[A-Za-z0-9_]+/
+    }
+
+    modifier {
+        required: [confidence, rule, source]
+        optional: [certainty, strength, author, timestamp, domain, location]
+
+        confidence: float(0.3, 1.0)
+        certainty: float(0.0, 1.0)
+        strength: float(0.0, 1.0)
+        rule: enum("causal", "empirical", "logical", "definitional")
+    }
+
+    constraints {
+        min_statements: 1
+        max_statements: 1000
+    }
+}

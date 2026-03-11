@@ -1,0 +1,40 @@
+# STL Schema Template
+# Copy this file, rename to <domain>.stl.schema, and fill in constraints.
+#
+# Usage:
+#   schema = load_schema("docs/schemas/<domain>.stl.schema")
+#   result = validate_against_schema(parsed_doc, schema)
+
+schema DomainName v1.0 {
+
+    # Default namespace (metadata — not auto-enforced on anchors)
+    # namespace "MyDomain"
+
+    # Source anchor constraints
+    # anchor source {
+    #     namespace: required("MyDomain")
+    #     pattern: /[A-Za-z_]+/
+    # }
+
+    # Target anchor constraints
+    # anchor target {
+    #     namespace: optional
+    #     pattern: /[A-Za-z_]+/
+    # }
+
+    # Modifier constraints
+    modifier {
+        required: [confidence]
+        # optional: [source, author, time]
+
+        confidence: float(0.0, 1.0)
+        # rule: enum("causal", "logical", "empirical", "definitional")
+        # source: string
+    }
+
+    # Document-level constraints
+    # constraints {
+    #     min_statements: 1
+    #     max_statements: 1000
+    # }
+}
