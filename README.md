@@ -127,11 +127,7 @@ STL is an open standard. We welcome issues, discussions, and contributions. See 
 
 ## Citation
 
-```bibtex
-@software{stl_2025,
-  author = {SCOS-Lab},
-  title = {Semantic Tension Language (STL): A Structural Protocol for Provenanced Knowledge},
-  year = {2025},
-  url = {https://github.com/scos-lab/semantic-tension-language}
-}
+```Wuko. (2025). Semantic Tension Language (STL): A Theoretical Framework for Structured
+and Interpretable Knowledge Representation (v1.0). Zenodo.
+https://doi.org/10.5281/zenodo.17585432
 ```
