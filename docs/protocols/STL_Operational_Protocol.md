@@ -143,6 +143,28 @@ STL introduces a **tension-path model** where knowledge flows directionally from
 
 ## 4. Modifier System (Complete Reference)
 
+### 4.0 Meta Semantic Fields (META_SEMANTIC_FIELDS)
+
+Meta Semantic Fields are a special class of modifiers that define the **semantic nature of the edge itself** — i.e., *what kind of relationship* exists between the source and target nodes. They are distinct from attribute modifiers (confidence, description, timestamp) which describe *properties* of the edge.
+
+Every well-formed STL edge should carry at least one meta semantic field. The `(meta_field, meta_value)` pair is the edge's semantic signature.
+
+| Meta Field | Semantics | Example |
+|------------|-----------|---------|
+| `relation` | General relationship | `::mod(relation="师傅")`, `::mod(relation="causes")` |
+| `status` | State of being | `::mod(status="deceased")`, `::mod(status="active")` |
+| `role` | Role in a structure | `::mod(role="leader")`, `::mod(role="member")` |
+| `type` | Type classification | `::mod(type="person")`, `::mod(type="location")` |
+| `kind` | Kind/variety | `::mod(kind="weapon")`, `::mod(kind="herb")` |
+| `is_a` | Taxonomic relationship | `::mod(is_a="martial_art")` |
+| `action` | Action/behavior | `::mod(action="purchase")`, `::mod(action="喝酒")` |
+| `predicate` | Generic predicate (legacy compat) | `::mod(predicate="teaches")` |
+| `phase` | Phase/stage | `::mod(phase="current")`, `::mod(phase="completed")` |
+
+**Supersede detection:** When two edges share the same `(source, meta_field, meta_value)` but have different targets, the newer edge (by `created_at`) is a candidate correction of the older one. Systems may flag the older edge as `suspected_supersede=true` to assist downstream reasoning.
+
+**Constant name in code:** `META_SEMANTIC_FIELDS`
+
 ### 4.1 Standard Modifier Categories
 
 #### 4.1.1 Temporal Modifiers
@@ -186,12 +208,12 @@ STL introduces a **tension-path model** where knowledge flows directionally from
 > | Field | Meaning | Set by | Example |
 > |-------|---------|--------|---------|
 > | `timestamp` | **When the event happened** (event time) | Author (manual) | "Einstein published on 1905-09-26" |
-> | `recorded_at` | **When this statement was recorded** (record time) | System (auto) | "This edge was written on 2026-03-25" |
-> | STG `created_at` | **When the edge was ingested into STG** (storage time) | STG engine (auto) | epoch float, internal |
+> | `recorded_at` | **When this statement was recorded** (record time) | Conceptual (not implemented in code) | "This statement was written on 2026-03-25" |
+> | STG `created_at` | **When the edge was ingested into STG** (ingest time) | STG engine (auto) | epoch float, internal |
 >
 > - `timestamp` is semantic — part of the knowledge itself
-> - `recorded_at` is provenance — when the knowledge was captured
-> - STG `created_at` is infrastructure — when the edge entered the graph (may differ from `recorded_at` if imported later)
+> - `recorded_at` is conceptual — it exists to clarify that `created_at` means "ingest time", not "when the knowledge was originally recorded". In practice `recorded_at ≈ created_at` because statements are typically ingested immediately after writing. Not implemented in code; not stored on edges.
+> - STG `created_at` is infrastructure — when the edge entered the graph via `add_edge()` or `ingest_stl()`
 
 #### 4.1.5 Affective Modifiers
 
@@ -754,6 +776,7 @@ While LLMs generate STL text, the backend compiles to:
 
 | Category | Must-Have Keys | Optional Keys |
 |----------|----------------|---------------|
+| **Meta Semantic** | one of: `relation`, `status`, `role`, `type`, `kind`, `is_a`, `action`, `predicate`, `phase` | — |
 | **Temporal** | `time` | `duration`, `frequency`, `tense` |
 | **Spatial** | `location` or `domain` | `scope` |
 | **Logical** | `confidence` | `certainty`, `necessity`, `rule` |
