@@ -297,12 +297,8 @@ Apache License 2.0 — see [LICENSE](https://github.com/scos-lab/semantic-tensio
 
 ## Citation
 
-```bibtex
-@software{stl_parser_2025,
-  author = {SCOS-Lab},
-  title = {STL Parser: A Comprehensive Toolkit for Semantic Tension Language},
-  year = {2025},
-  version = {1.7.0},
-  url = {https://github.com/scos-lab/semantic-tension-language}
-}
+```
+Wuko. (2025). Semantic Tension Language (STL): A Theoretical Framework for Structured
+and Interpretable Knowledge Representation (v1.0). Zenodo.
+https://doi.org/10.5281/zenodo.17585432
 ```

@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stl-parser"
-version = "1.7.0"
+version = "1.7.3"
 description = "Semantic Tension Language (STL) Parser - A lightweight parser for structured knowledge representation"
 readme = "README.md"
 requires-python = ">=3.9"
 license = "Apache-2.0"
 authors = [
-    {name = "STL Working Group", email = "contact@scos-lab.org"}
+    {name = "STL Working Group", email = "contact@stl-lang.org"}
 ]
 keywords = ["stl", "semantic-tension-language", "parser", "knowledge-graph", "structured-knowledge"]
 classifiers = [
@@ -52,8 +52,8 @@ docs = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/scos-lab/semantic-tension-language"
-Documentation = "https://github.com/scos-lab/semantic-tension-language/tree/main/docs"
+Homepage = "https://stl-lang.org"
+Documentation = "https://stl-lang.org/docs"
 Repository = "https://github.com/scos-lab/semantic-tension-language/tree/main/parser"
 Issues = "https://github.com/scos-lab/semantic-tension-language/issues"
 

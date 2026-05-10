@@ -1,0 +1,18 @@
+# Default: treat all files as text and normalize to LF in the repository.
+# Working trees on Windows still get LF — keeps the repo cross-platform clean.
+* text=auto eol=lf
+
+# Binary files — never normalize.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tar binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
