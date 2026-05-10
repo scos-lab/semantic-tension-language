@@ -638,7 +638,9 @@ Properties: Cycle detection, stability analysis, feedback structures
 
 ### 9.4 Self-Loop as Node Intrinsic Property Carrier
 
-A **self-loop edge** (`[Node] → [Node]`) marked with `action="intrinsic_properties"` is the canonical way to attach **node-identity attributes** to a node — id values, registration codes, dimensional facts, fixed metadata that belong to the node itself rather than to any specific outgoing relationship.
+A **self-loop edge** (`[Node] → [Node]`) marked with `action="intrinsic_properties"` is the canonical way to write **node-identity attributes** in STL — id values, registration codes, dimensional facts, fixed metadata that belong to the node itself rather than to any specific outgoing relationship.
+
+This self-loop is **surface syntax only**. STL-consuming engines materialize the modifiers into node-level attribute storage; **no graph edge is created**.
 
 #### Convention
 
@@ -664,22 +666,25 @@ The modifier bag (`appid`, `release_year`, `price_usd`, ...) carries the node's 
 
 - The attribute is a relationship to another node → use a normal edge (`[Game] → [Studio] ::mod(action="developed_by")`)
 - The attribute might supersede over time and you need explicit history → use normal edges with `occurred_time` so supersede detection catches updates
-- One or two attributes only → just put them on the existing edges; the boilerplate cost is low
+- One or two attributes only — boilerplate cost is acceptable on the existing edges
 
 #### Runtime contract
 
-Implementations of STG (or any propagation engine consuming STL) **MUST**:
+STL-consuming engines (e.g. STG) **MUST**:
 
-1. **Preserve edge data** — the self-loop and all its modifiers stay in storage exactly as ingested
-2. **Exclude from propagation** — the edge is *not* a path; activation must not flow `Node → Node` through it
-3. **Exclude from community detection** — the edge does not contribute to graph topology for clustering / Louvain / gravity
-4. **Render distinctly in node detail views** — UIs should surface these modifiers as a `Properties:` section, separate from outgoing/incoming edge listings
+1. **Materialize modifiers to node-level attribute storage** — write the user-facing attribute keys into the source node's attribute store (e.g. `nodes.metadata_json` in STG's SQLite schema)
+2. **NOT create a graph edge** — the self-loop is not stored in `_edges`, `_edges_lookup`, or the graph topology. Subsequent `get_edges(source=X)` and `_graph.has_edge(X, X)` queries must not return it
+3. **Strip carrier-internal modifier keys** before materialization — at minimum `action` and `edge_class` describe the carrier convention itself, not the node identity, and must not pollute attribute storage
+4. **Discard edge-only fields** — `confidence`, `strength`, `rule`, `time` are edge fields with no semantic meaning on a non-existent edge; engines may silently drop them. (Authors typically still write `confidence=0.99, rule="definitional"` for STL syntactic completeness; the values are accepted but not retained.)
+5. **Render distinctly in node detail views** — UIs should surface attributes as a `Properties:` section in node detail output, separate from outgoing/incoming edge listings
 
-In short: the edge is a **storage convention**, not a structural one. The graph behaves as if the edge were not there for any analysis that depends on edge topology; it behaves as if the edge were there for any retrieval of node identity attributes.
+Engines **MAY** retain a defensive filter on legacy or manually-created self-loop intrinsic-property edges (i.e. edges that arrived by paths other than `ingest_stl`), excluding them from propagation and community detection. This is a robustness measure for edges that exist contrary to clause 2.
 
-#### Why this is a self-loop, not a node attribute table
+#### Why this is a self-loop, not direct attribute syntax
 
-STL keeps everything in the edge layer — there is no separate node-attribute schema. Self-loops with a reserved `action` value reuse the existing edge machinery (parsing, persistence, query) without introducing a parallel data model. The cost is one filter rule at three consumption sites; the benefit is **zero schema changes**.
+STL's surface form is uniformly `[A] → [B] ::mod(...)`. Introducing a separate node-attribute syntax (e.g. `[Node] ::attrs(...)`) would fragment the language. Self-loops with a reserved `action` value let LLMs and humans write attributes using the same single-rule grammar; the engine handles the surface-to-storage translation.
+
+The cost is the materialization step (one branch in `ingest_stl`); the benefit is **zero new STL syntax** and a clean separation between the language layer (everything is an edge) and the storage layer (nodes have attributes, edges have modifiers).
 
 #### Anti-pattern
 
@@ -691,10 +696,14 @@ STL keeps everything in the edge layer — there is no separate node-attribute s
 ```
 
 ```
-# ✅ Use a self-loop instead
+# ✅ Use a self-loop instead — engine materializes to node attributes
 [Elden_Ring] → [Elden_Ring] ::mod(action="intrinsic_properties", appid="1245620", release_year="2022", confidence=0.99)
 [Elden_Ring] → [Souls_Like] ::mod(action="has_tag", confidence=0.95)
 ```
+
+#### Reference implementation
+
+STG implements this contract as of stg-engine commit `7a94bb4` (2026-05-10). `ingest_stl` detects the self-loop pattern and routes through `_try_materialize_intrinsic_properties`, which calls `add_node(**stripped_modifiers)` and short-circuits the normal `add_edge` path. `nodes.metadata_json` becomes the canonical attribute store, queryable via SQLite `JSON_EXTRACT` and rendered by `stg node <name>` as a `Properties:` section.
 
 ### 9.5 Propagation Semantics (Reference: STG)
 
