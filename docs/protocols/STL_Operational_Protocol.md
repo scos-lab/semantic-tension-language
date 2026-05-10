@@ -632,6 +632,66 @@ Model reflexive reasoning with cycles:
 
 Properties: Cycle detection, stability analysis, feedback structures
 
+### 9.4 Self-Loop as Node Intrinsic Property Carrier
+
+A **self-loop edge** (`[Node] → [Node]`) marked with `action="intrinsic_properties"` is the canonical way to attach **node-identity attributes** to a node — id values, registration codes, dimensional facts, fixed metadata that belong to the node itself rather than to any specific outgoing relationship.
+
+#### Convention
+
+```
+[Elden_Ring] → [Elden_Ring] ::mod(
+  action="intrinsic_properties",
+  appid="1245620",
+  release_year="2022",
+  price_usd="59.99",
+  confidence=0.99
+)
+```
+
+The modifier bag (`appid`, `release_year`, `price_usd`, ...) carries the node's intrinsic attributes. Each attribute key is a free-form string; downstream tooling reads them by key.
+
+#### When to use
+
+- A node has **N attributes** that would otherwise be repeated on every outgoing business edge (e.g. each game emits 35+ edges, each carrying `appid="..."` redundantly)
+- Attributes are **identity-level** — they describe what the node *is*, not how it relates to anything
+- You want a single canonical source for these attributes
+
+#### When NOT to use
+
+- The attribute is a relationship to another node → use a normal edge (`[Game] → [Studio] ::mod(action="developed_by")`)
+- The attribute might supersede over time and you need explicit history → use normal edges with `occurred_time` so supersede detection catches updates
+- One or two attributes only → just put them on the existing edges; the boilerplate cost is low
+
+#### Runtime contract
+
+Implementations of STG (or any propagation engine consuming STL) **MUST**:
+
+1. **Preserve edge data** — the self-loop and all its modifiers stay in storage exactly as ingested
+2. **Exclude from propagation** — the edge is *not* a path; activation must not flow `Node → Node` through it
+3. **Exclude from community detection** — the edge does not contribute to graph topology for clustering / Louvain / gravity
+4. **Render distinctly in node detail views** — UIs should surface these modifiers as a `Properties:` section, separate from outgoing/incoming edge listings
+
+In short: the edge is a **storage convention**, not a structural one. The graph behaves as if the edge were not there for any analysis that depends on edge topology; it behaves as if the edge were there for any retrieval of node identity attributes.
+
+#### Why this is a self-loop, not a node attribute table
+
+STL keeps everything in the edge layer — there is no separate node-attribute schema. Self-loops with a reserved `action` value reuse the existing edge machinery (parsing, persistence, query) without introducing a parallel data model. The cost is one filter rule at three consumption sites; the benefit is **zero schema changes**.
+
+#### Anti-pattern
+
+```
+# ❌ Don't put intrinsic properties on a regular outgoing edge
+[Elden_Ring] → [Souls_Like] ::mod(action="has_tag", appid="1245620", release_year="2022")
+# appid/release_year aren't about the Souls_Like tag — they're about the node itself.
+# When you have 35 outgoing edges, you'd repeat appid 35 times.
+```
+
+```
+# ✅ Use a self-loop instead
+[Elden_Ring] → [Elden_Ring] ::mod(action="intrinsic_properties", appid="1245620", release_year="2022", confidence=0.99)
+[Elden_Ring] → [Souls_Like] ::mod(action="has_tag", confidence=0.95)
+```
+
 ---
 
 ## 10. Quality Assurance Protocol
