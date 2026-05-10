@@ -193,6 +193,8 @@ Every well-formed STL edge should carry at least one meta semantic field. The `(
 | `necessity` | Enum | `"Possible"`, `"Contingent"`, `"Necessary"` | `::mod(necessity="Necessary")` |
 | `rule` | Enum | `"causal"`, `"logical"`, `"empirical"`, `"definitional"` | `::mod(rule="causal")` |
 
+> **Note on `confidence` — dual-purpose field:** `confidence` is both an **epistemic claim** (how true is this relationship?) and a **propagation weight factor** (how strongly does activation flow through this edge in STG?). The two roles are usually aligned, but be aware: lowering `confidence` reduces both the epistemic strength of the claim *and* the activation flow. For structured ground-truth ingest (e.g., direct quotes from authoritative APIs), `confidence=1.0` is the correct value — it preserves epistemic accuracy *and* hands propagation control to runtime `salience` (Hebbian-learned usage frequency). See §9.5.
+
 #### 4.1.4 Provenance Modifiers (REQUIRED for Verifiable Knowledge)
 
 | Key | Type | Values | Example |
@@ -239,6 +241,8 @@ Every well-formed STL edge should carry at least one meta semantic field. The `(
 | `effect` | String | Effect description | `::mod(effect="Flooding")` |
 | `strength` | Float | [0.0, 1.0] | `::mod(strength=0.9)` |
 | `conditionality` | Enum | `"Sufficient"`, `"Necessary"`, `"Both"` | `::mod(conditionality="Sufficient")` |
+
+> **Note on `strength`:** `strength` is **descriptive metadata** for causal-graph analysis — it documents the *modeled* causal coupling between source and target. It is **not** a propagation weight. STG's spreading-activation formula uses `confidence × salience` only; `strength` does not influence retrieval dynamics. See §9.5 for full propagation semantics. Default value when omitted: `0.5` (engines may treat this as "no explicit causal-strength claim" and omit it from serialized output).
 
 #### 4.1.8 Cognitive Modifiers
 
@@ -691,6 +695,51 @@ STL keeps everything in the edge layer — there is no separate node-attribute s
 [Elden_Ring] → [Elden_Ring] ::mod(action="intrinsic_properties", appid="1245620", release_year="2022", confidence=0.99)
 [Elden_Ring] → [Souls_Like] ::mod(action="has_tag", confidence=0.95)
 ```
+
+### 9.5 Propagation Semantics (Reference: STG)
+
+In STG — the reference STL-consuming graph engine — spreading activation across edges uses this formula:
+
+```
+propagation_weight = confidence × salience × virtual_factor
+```
+
+where:
+
+- **`confidence`** is the epistemic-confidence modifier on the edge (`[0.0, 1.0]`, set by the author at ingest time)
+- **`salience`** is a runtime quantity maintained by Hebbian learning. New edges initialize `salience = confidence`; usage strengthens it, disuse weakens it
+- **`virtual_factor`** = `0.5` for auto-generated structural bridges (`edge_class="virtual"`), `1.0` otherwise
+
+#### What this means for STL authors
+
+| Modifier | Role in propagation | Authored? |
+|----------|---------------------|-----------|
+| `confidence` | **Direct factor** in propagation weight | ✅ Yes — by author at ingest time |
+| `salience` | **Direct factor** in propagation weight | ❌ No — maintained by the engine via Hebbian learning |
+| `strength` | **Not used** by propagation. Descriptive metadata for causal-graph analysis only (§4.1.7) | ✅ Yes — by author, but with no effect on retrieval dynamics |
+
+#### Common confusion: `strength` is not a propagation weight
+
+It is tempting to read `strength=0.9` on a causal edge as "this edge should propagate strongly." It does not. STG (and conformant engines) ignore `strength` during spreading activation. To make an edge propagate more strongly:
+
+- ✅ **Raise its `confidence`** if epistemically justified
+- ✅ **Let real usage drive `salience` upward** via Hebbian learning
+- ❌ **Do not** encode propagation intent in `strength` — engines will not honor it
+
+Reserve `strength` for what its name suggests: a *descriptive label of causal coupling* for auditability and downstream reasoning (e.g., causal-graph analysis tools that read STL).
+
+#### Confidence is dual-purpose
+
+Authors should be aware that `confidence` simultaneously acts as:
+
+1. An **epistemic claim** about the truth of the relationship (read by humans, audit tools, validation logic)
+2. A **propagation weight factor** affecting activation flow at retrieval time
+
+These two roles are usually aligned (uncertain knowledge should propagate weakly), so the dual purpose is rarely a problem. But for structured ground-truth ingest scenarios — where every edge is a direct quote from an authoritative source — setting `confidence=1.0` is semantically correct *and* hands propagation control entirely to `salience` (i.e., to the engine's learning of which facts matter through use).
+
+#### Other STL-consuming engines
+
+This section describes STG's propagation contract. Other STL consumers may choose different propagation models (some may, for example, fold `strength` into the weight). When implementing a non-STG STL engine, document the propagation semantics explicitly — STL the language does not mandate any particular formula.
 
 ---
 
