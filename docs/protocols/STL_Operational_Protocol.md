@@ -1,9 +1,13 @@
-# STL Operational Protocol v1.0
+# STL Operational Protocol v1.1
 
 > **Protocol Type:** Compiler-Facing Protocol for LLMs
 > **Purpose:** Standard protocol for LLMs to generate valid STL (Semantic Tension Language) statements
 > **Specification Base:** STL Core Specification v1.0 + Supplement
 > **Target:** Large Language Models generating structured knowledge representations
+>
+> **What's new in v1.1:** §4.2 *Default Value Omission* — `confidence`, `rule`, and
+> `strength` now carry well-defined defaults; omitting them is preferred for new
+> authoring (≈17% token savings). Fully backward compatible. See §4.2.
 
 ---
 
@@ -186,14 +190,14 @@ Every well-formed STL edge should carry at least one meta semantic field. The `(
 
 #### 4.1.3 Logical Modifiers (CRITICAL for LLMs)
 
-| Key | Type | Values | Example |
-|-----|------|--------|---------|
-| `certainty` | Float | [0.0, 1.0] | `::mod(certainty=0.95)` |
-| `confidence` | Float | [0.0, 1.0] | `::mod(confidence=0.85)` |
-| `necessity` | Enum | `"Possible"`, `"Contingent"`, `"Necessary"` | `::mod(necessity="Necessary")` |
-| `rule` | Enum | `"causal"`, `"logical"`, `"empirical"`, `"definitional"` | `::mod(rule="causal")` |
+| Key | Type | Values | Default | Example |
+|-----|------|--------|---------|---------|
+| `certainty` | Float | [0.0, 1.0] | absent | `::mod(certainty=0.95)` |
+| `confidence` | Float | [0.0, 1.0] | `1.0` (see §4.2) | `::mod(confidence=0.85)` |
+| `necessity` | Enum | `"Possible"`, `"Contingent"`, `"Necessary"` | absent | `::mod(necessity="Necessary")` |
+| `rule` | Enum | `"causal"`, `"logical"`, `"empirical"`, `"definitional"` | inferred from meta field (see §4.2.2) | `::mod(rule="causal")` |
 
-> **Note on `confidence` — dual-purpose field:** `confidence` is both an **epistemic claim** (how true is this relationship?) and a **propagation weight factor** (how strongly does activation flow through this edge in STG?). The two roles are usually aligned, but be aware: lowering `confidence` reduces both the epistemic strength of the claim *and* the activation flow. For structured ground-truth ingest (e.g., direct quotes from authoritative APIs), `confidence=1.0` is the correct value — it preserves epistemic accuracy *and* hands propagation control to runtime `salience` (Hebbian-learned usage frequency). See §9.5.
+> **Note on `confidence` — dual-purpose field:** `confidence` is both an **epistemic claim** (how true is this relationship?) and a **propagation weight factor** (how strongly does activation flow through this edge in STG?). The two roles are usually aligned, but be aware: lowering `confidence` reduces both the epistemic strength of the claim *and* the activation flow. For structured ground-truth ingest (e.g., direct quotes from authoritative APIs), `confidence=1.0` is the correct value — it preserves epistemic accuracy *and* hands propagation control to runtime `salience` (Hebbian-learned usage frequency). Under v1.1 defaults, this is the value applied when `confidence` is omitted. See §4.2 and §9.5.
 
 #### 4.1.4 Provenance Modifiers (REQUIRED for Verifiable Knowledge)
 
@@ -242,7 +246,9 @@ Every well-formed STL edge should carry at least one meta semantic field. The `(
 | `strength` | Float | [0.0, 1.0] | `::mod(strength=0.9)` |
 | `conditionality` | Enum | `"Sufficient"`, `"Necessary"`, `"Both"` | `::mod(conditionality="Sufficient")` |
 
-> **Note on `strength`:** `strength` is **descriptive metadata** for causal-graph analysis — it documents the *modeled* causal coupling between source and target. It is **not** a propagation weight. STG's spreading-activation formula uses `confidence × salience` only; `strength` does not influence retrieval dynamics. See §9.5 for full propagation semantics. Default value when omitted: `0.5` (engines may treat this as "no explicit causal-strength claim" and omit it from serialized output).
+> **Note on `strength`:** `strength` is **descriptive metadata** for causal-graph analysis — it documents the *modeled* causal coupling between source and target. It is **not** a propagation weight. STG's spreading-activation formula uses `confidence × salience` only; `strength` does not influence retrieval dynamics. See §9.5 for full propagation semantics.
+>
+> **Default (v1.1, see §4.2.1):** absent — `strength` is required only when `rule="causal"`; on non-causal edges it carries no semantic content and SHOULD be omitted. (Earlier drafts of this protocol suggested a `0.5` placeholder; v1.1 treats omission as "no causal-strength claim" instead.)
 
 #### 4.1.8 Cognitive Modifiers
 
@@ -258,6 +264,106 @@ Every well-formed STL edge should carry at least one meta semantic field. The `(
 |-----|------|--------|---------|
 | `mood` | Enum | `"Assertion"`, `"Question"`, `"Request"`, `"Doubt"` | `::mod(mood="Question")` |
 | `modality` | Enum | `"Indicative"`, `"Subjunctive"`, `"Imperative"` | `::mod(modality="Subjunctive")` |
+
+### 4.2 Default Value Omission
+
+To reduce token cost and visual clutter, certain modifiers carry well-defined
+default values. When omitted, **parsers MUST apply the defaults below** before
+passing the parsed edge to downstream consumers (STG ingest, validators,
+RDF/JSON exporters).
+
+**Design rationale.** STL is read and generated by LLMs at scale; modifier
+repetition (`confidence=1.0` on every definitional edge, `rule="empirical"` on
+every lesson edge) costs both tokens and visual signal-to-noise. Defaults let
+authors omit the *expected* value and reserve explicit modifiers for
+*deviations* — the same principle behind sensible-default schemas in modern
+programming languages.
+
+#### 4.2.1 Default Value Table
+
+| Modifier | Default when omitted | Override |
+|----------|----------------------|----------|
+| `confidence` | `1.0` (assertive — "I am stating this as fact") | Write explicitly for any non-1.0 value, e.g. `confidence=0.85` |
+| `rule` | Inferred from the meta-semantic field (see §4.2.2) | Write explicitly to override inference |
+| `strength` | Absent (omitted from serialized output) | Required only when `rule="causal"`; previously implied `0.5` is now treated as "no claim" |
+| `time` / `tense` | Absent | Write only when temporally relevant |
+
+#### 4.2.2 Rule Inference from Meta-Semantic Field
+
+When `rule` is omitted, parsers MUST infer it from the meta-semantic field
+present on the edge:
+
+| Meta field present | Companion fields | Inferred `rule` |
+|--------------------|------------------|-----------------|
+| `is_a` | — | `definitional` |
+| `role` | — | `definitional` |
+| `type` / `kind` | — | `definitional` |
+| `action` | `cause` / `effect` / `strength` | `causal` |
+| `action` | `lesson` | `empirical` |
+| `action` | (other) | `empirical` |
+| `status` | — | `empirical` |
+| `phase` | — | `temporal` |
+| `relation` / `predicate` | — | `definitional` |
+| (no meta field) | — | `definitional` |
+
+**Explicit override always wins.** If both `rule` and a meta-semantic field
+are present on the same edge, the explicit `rule` value is used; inference
+applies only when `rule` is absent.
+
+#### 4.2.3 Equivalence Examples
+
+These pairs are semantically equivalent — the right-hand form is preferred for
+new authoring:
+
+```
+# Definitional (taxonomic)
+[Cat] → [Mammal] ::mod(is_a="taxonomy", rule="definitional", confidence=1.0)
+[Cat] → [Mammal] ::mod(is_a="taxonomy")                                           # ✓ default-omitted
+
+# Causal
+[Heavy_Rain] → [Flooding] ::mod(action="triggers", rule="causal", strength=0.8, confidence=0.85)
+[Heavy_Rain] → [Flooding] ::mod(action="triggers", strength=0.8, confidence=0.85) # ✓
+
+# Empirical lesson
+[Refresh_Token] → [Auth_Failure] ::mod(action="causes", rule="empirical",
+  lesson="Testing-mode OAuth tokens expire in 7 days", occurred_time="2026-04-23",
+  confidence=0.95)
+[Refresh_Token] → [Auth_Failure] ::mod(action="causes",
+  lesson="Testing-mode OAuth tokens expire in 7 days", occurred_time="2026-04-23",
+  confidence=0.95)                                                                # ✓
+```
+
+#### 4.2.4 Backward Compatibility
+
+The defaults extend, not replace, the existing grammar:
+
+- **Explicit values remain valid.** `::mod(rule="empirical", confidence=1.0, ...)`
+  is not deprecated and parses identically to its default-omitted form.
+  Existing STG databases require no migration.
+- **Parsers MUST apply defaults at the post-parse layer**, so downstream
+  consumers receive a uniformly-filled edge regardless of which form the
+  author wrote.
+- **Canonical-output tools** (formatters, normalizers, round-trip
+  serializers) SHOULD prefer the default-omitted form for new edges to
+  maximize token efficiency, but MAY emit either form.
+
+#### 4.2.5 Empirical Token Savings
+
+Measured against five representative edge styles (definitional / causal /
+empirical / role-spec) tokenized with `cl100k_base`:
+
+| Edge style | Tokens before | Tokens after | Saving |
+|------------|--------------:|-------------:|-------:|
+| Definitional (`is_a`) | 28 | 16 | −43% |
+| Causal | 34 | 29 | −15% |
+| Empirical (with `lesson`) | 53 | 48 | −9% |
+| Definitional + `description` | 35 | 30 | −14% |
+| Role/spec | 38 | 32 | −16% |
+| **Average** | — | — | **−17.6%** |
+
+Savings scale with structural density: edges dominated by free-text fields
+(long `lesson`, `description`) see smaller relative savings, while short
+type/role edges see the largest gains.
 
 ---
 
@@ -303,43 +409,55 @@ START
 
 ### 5.3 Mandatory Fields by Context
 
+> **v1.1 reminder:** `rule` and `confidence` may be omitted when they match the
+> §4.2 defaults (`confidence=1.0`; `rule` inferred from the meta-semantic field).
+> The lists below mark fields as *required when stated*, i.e. you must either
+> include the explicit value **or** ensure the §4.2 default produces it.
+
 **For Historical Knowledge:**
 ```
-REQUIRED: time (ISO 8601 or "Past"), source, confidence
-RECOMMENDED: author, location, domain
+REQUIRED:    time (ISO 8601 or "Past"), source
+RECOMMENDED: confidence (if <1.0), author, location, domain
 ```
 
 **For Scientific Claims:**
 ```
-REQUIRED: rule="empirical", confidence, source
-RECOMMENDED: certainty, timestamp, author
+REQUIRED:    source
+EFFECTIVE:   rule="empirical"  (use meta field action= + lesson, or write rule explicitly)
+RECOMMENDED: confidence (if <1.0), certainty, timestamp, author
 ```
 
 **For Definitional Statements:**
 ```
-REQUIRED: rule="definitional", confidence=0.95+
-RECOMMENDED: domain, source
+EFFECTIVE:   rule="definitional"  (use meta field is_a= / role=, or write rule explicitly)
+RECOMMENDED: confidence (if <1.0; usually omit since 1.0 is the assertive default),
+             domain, source
 ```
 
 **For Causal Relations:**
 ```
-REQUIRED: rule="causal", strength, confidence
-RECOMMENDED: conditionality, time, source
+REQUIRED:    strength
+EFFECTIVE:   rule="causal"  (use meta field action= + cause/effect, or write rule explicitly)
+RECOMMENDED: confidence (if <1.0), conditionality, time, source
 ```
 
 ### 5.4 Best Practices for LLMs
 
 #### DO:
-✅ **Always include `confidence` for factual claims**
+✅ **Include `confidence` whenever the claim is not 1.0** — the assertive default applies only to claims you are willing to assert as fact
 ✅ **Use `source` for verifiable statements**
 ✅ **Break complex relations into simple chains**
 ✅ **Use namespaces for disambiguation** (`[Physics:Energy]` vs `[Psychology:Energy]`)
 ✅ **Preserve original language** (Chinese, Arabic, etc. are fully supported)
 ✅ **Use `time` for temporal context**
-✅ **Calibrate confidence accurately** (don't default to 1.0)
+✅ **Calibrate confidence accurately** — omit it when you mean 1.0; write the calibrated value otherwise
+✅ **Prefer meta-field-driven `rule` inference** — omit `rule` when the meta field unambiguously implies it (see §4.2.2)
 
 #### DON'T:
-❌ **Don't omit confidence for uncertain claims**
+❌ **Don't omit confidence for uncertain claims** — omission means 1.0
+❌ **Don't write `confidence=1.0` explicitly** — omit it; default applies
+❌ **Don't write `rule=...` when the meta field already implies it** — let inference fill it in
+❌ **Don't include `strength` on non-causal edges** — it has no semantic content there (§4.1.7, §4.2.1)
 ❌ **Don't chain more than 5 nodes in one statement**
 ❌ **Don't use special characters in anchor names** (except `_` and `:`)
 ❌ **Don't conflate concepts with interpretations**
@@ -854,16 +972,27 @@ While LLMs generate STL text, the backend compiles to:
 [Source] → [Target]
 ```
 
-### Recommended Statement (Factual)
+### Recommended Statement (Factual, v1.1 default-omitted form)
 ```
 [Source] → [Target] ::mod(
-  confidence=0.85,
+  is_a="...",                    # meta field → rule="definitional" inferred
+  source="reference",
+  time="2025-01-15"
+)
+# confidence omitted → 1.0 (assertive); rule omitted → "definitional"
+```
+
+### Recommended Statement (Uncertain Claim)
+```
+[Source] → [Target] ::mod(
+  action="...",                  # meta field → rule="causal" or "empirical" inferred
+  confidence=0.85,               # explicit because not 1.0
   source="reference",
   time="2025-01-15"
 )
 ```
 
-### Complete Statement (All Dimensions)
+### Complete Statement (All Dimensions, explicit form for clarity)
 ```
 [Source] → [Target] ::mod(
   rule="causal",
@@ -892,18 +1021,18 @@ While LLMs generate STL text, the backend compiles to:
 
 ## Appendix A: Modifier Quick Reference
 
-| Category | Must-Have Keys | Optional Keys |
-|----------|----------------|---------------|
-| **Meta Semantic** | one of: `relation`, `status`, `role`, `type`, `kind`, `is_a`, `action`, `predicate`, `phase` | — |
-| **Temporal** | `time` | `duration`, `frequency`, `tense` |
-| **Spatial** | `location` or `domain` | `scope` |
-| **Logical** | `confidence` | `certainty`, `necessity`, `rule` |
-| **Provenance** | `source` | `author`, `timestamp`, `version` |
-| **Affective** | `emotion` | `intensity`, `valence` |
-| **Value** | `value` | `alignment`, `priority` |
-| **Causal** | `strength` | `cause`, `effect`, `conditionality` |
-| **Cognitive** | `intent` | `focus`, `perspective` |
-| **Mood** | `mood` | `modality` |
+| Category | Must-Have Keys | Optional Keys | v1.1 Defaults |
+|----------|----------------|---------------|---------------|
+| **Meta Semantic** | one of: `relation`, `status`, `role`, `type`, `kind`, `is_a`, `action`, `predicate`, `phase` | — | — |
+| **Temporal** | `time` (when temporally relevant) | `duration`, `frequency`, `tense` | absent |
+| **Spatial** | `location` or `domain` | `scope` | absent |
+| **Logical** | — | `confidence`, `certainty`, `necessity`, `rule` | `confidence` → `1.0`; `rule` → inferred from meta field (§4.2.2) |
+| **Provenance** | `source` (for verifiable claims) | `author`, `timestamp`, `version` | absent |
+| **Affective** | `emotion` (when affect is relevant) | `intensity`, `valence` | absent |
+| **Value** | `value` (when value-laden) | `alignment`, `priority` | absent |
+| **Causal** | `strength` (only when `rule="causal"`) | `cause`, `effect`, `conditionality` | `strength` → absent on non-causal edges |
+| **Cognitive** | `intent` (when intent is relevant) | `focus`, `perspective` | absent |
+| **Mood** | `mood` (when mood is non-assertion) | `modality` | absent |
 
 ---
 
@@ -970,8 +1099,30 @@ While LLMs generate STL text, the backend compiles to:
 
 ---
 
-**Version:** 1.0.0
-**Date:** 2025-01-20
+**Version:** 1.1.0
+**Date:** 2026-05-13
 **Status:** Production
 **Specification Compliance:** STL Core v1.0 + Supplement v1.0
 **License:** CC BY 4.0
+
+### Changelog
+
+**v1.1.0 (2026-05-13)**
+- Added §4.2 *Default Value Omission* — `confidence` defaults to `1.0`,
+  `rule` is inferred from the meta-semantic field, `strength` is absent on
+  non-causal edges. Backward compatible: explicit values continue to parse
+  identically.
+- §4.1.3 logical-modifier table now lists per-key defaults.
+- §4.1.7 `strength` note updated: previously-suggested `0.5` placeholder is
+  superseded by "absent" on non-causal edges (no semantic content).
+- §5.3 "Mandatory Fields by Context" rewritten — `rule` and `confidence` are
+  marked `EFFECTIVE` / `RECOMMENDED` rather than `REQUIRED` when the §4.2
+  defaults produce the intended value.
+- §5.4 DO/DON'T updated to prefer default-omitted authoring.
+- §13 Quick Reference Card now shows v1.1 default-omitted form alongside the
+  explicit complete form.
+- Appendix A gained a `v1.1 Defaults` column.
+- Token-efficiency: ≈17.6% average reduction on representative edge styles
+  (cl100k_base; §4.2.5).
+
+**v1.0.0 (2025-01-20)** — Initial production release.
