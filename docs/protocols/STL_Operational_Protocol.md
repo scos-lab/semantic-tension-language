@@ -1,9 +1,16 @@
-# STL Operational Protocol v1.1
+# STL Operational Protocol v1.2
 
 > **Protocol Type:** Compiler-Facing Protocol for LLMs
 > **Purpose:** Standard protocol for LLMs to generate valid STL (Semantic Tension Language) statements
 > **Specification Base:** STL Core Specification v1.0 + Supplement
 > **Target:** Large Language Models generating structured knowledge representations
+>
+> **What's new in v1.2:** §5.2 *Confidence Calibration* rewritten as **6 canonical
+> discrete levels** (`1.0` / `0.95` / `0.8` / `0.5` / `0.2` / `0.01`) instead of
+> continuous bands. `1.0` is now reserved for **analytic truths only**
+> (definitions, mathematical theorems, logical tautologies). Strong synthetic
+> claims use `0.95`. LLMs SHOULD pick from the canonical set rather than
+> inventing intermediate values (e.g., `0.85`, `0.92`).
 >
 > **What's new in v1.1:** §4.2 *Default Value Omission* — `confidence`, `rule`, and
 > `strength` now carry well-defined defaults; omitting them is preferred for new
@@ -283,10 +290,17 @@ programming languages.
 
 | Modifier | Default when omitted | Override |
 |----------|----------------------|----------|
-| `confidence` | `1.0` (assertive — "I am stating this as fact") | Write explicitly for any non-1.0 value, e.g. `confidence=0.85` |
+| `confidence` | `1.0` (assertive — "I am stating this as fact") | Write explicitly using one of the six canonical levels (§5.2): `0.95` / `0.8` / `0.5` / `0.2` / `0.01` |
 | `rule` | Inferred from the meta-semantic field (see §4.2.2) | Write explicitly to override inference |
 | `strength` | Absent (omitted from serialized output) | Required only when `rule="causal"`; previously implied `0.5` is now treated as "no claim" |
 | `time` / `tense` | Absent | Write only when temporally relevant |
+
+> **Important — `confidence=1.0` is reserved for analytic truths (v1.2).** Omitting
+> `confidence` defaults to `1.0`, which means *analytic truth* (definitions,
+> mathematical theorems, logical tautologies). Empirical / synthetic claims —
+> even very strong ones — should write `confidence=0.95` explicitly to preserve
+> the analytic/synthetic distinction. See §5.2 for the canonical level table
+> and §5.4 for usage rules.
 
 #### 4.2.2 Rule Inference from Meta-Semantic Field
 
@@ -396,16 +410,60 @@ START
 
 ### 5.2 Confidence Score Calibration
 
-**LLMs MUST use these calibrated confidence scores:**
+**LLMs SHOULD pick `confidence` from these six canonical levels rather than
+inventing intermediate values.** Reducing the calibration space to six discrete
+points eliminates false precision (humans cannot reliably distinguish `0.85`
+from `0.92`) and makes generation faster and more consistent.
 
-| Confidence | When to Use |
-|------------|-------------|
-| **0.95-1.0** | Definitional truths, mathematical facts, direct quotes from source |
-| **0.85-0.94** | Well-established facts with strong evidence, widely accepted theories |
-| **0.70-0.84** | Generally accepted knowledge, moderate evidence |
-| **0.50-0.69** | Probable but uncertain, limited evidence, interpretative |
-| **0.30-0.49** | Speculative, weak evidence, contested interpretations |
-| **0.0-0.29** | Highly uncertain, hypothetical, contradictory evidence |
+| Confidence | Canonical Name | Semantics | When to Use |
+|-----------:|---------------|-----------|-------------|
+| **1.0** *(default — omit)* | **Assertive** | Analytic truth | Definitions, mathematical theorems, logical tautologies, taxonomic membership by definition. **NOT for empirical claims.** |
+| **0.95** | **Confident** | Strong empirical + academic humility | Well-established empirical facts, direct quotes from authoritative sources, widely accepted scientific theories. The default level for synthetic claims. |
+| **0.8** | **Likely** | Probable, moderate evidence | Generally accepted knowledge, reasonable inferences, claims with supporting evidence but room for revision. |
+| **0.5** | **Unknown** | Maximum entropy / 50-50 | Genuine ignorance, evenly balanced competing hypotheses, insufficient information to lean either way. |
+| **0.2** | **Doubtful** | Evidence against, leaning false | Weak supporting evidence, contested claims I lean against, hypotheses with significant counter-evidence. |
+| **0.01** | **Disbelieved** | Recorded but rejected | Claims I record (e.g., user reports, historical hearsay) but do not believe. Often paired with `certainty` to express the agent's independent judgment (see below). |
+
+#### The Analytic/Synthetic Distinction (Why `1.0` ≠ "very confident")
+
+`1.0` is **not** "very strong belief" — it means **analytic**: true by virtue of
+definition, mathematical proof, or logical structure. The claim "no empirical
+fact is 100% certain" is correct for synthetic claims but inapplicable to
+analytic ones.
+
+| Statement type | Example | Canonical confidence |
+|---------------|---------|---------------------|
+| Analytic (definition) | `[Cat] → [Mammal] ::mod(is_a="taxonomy")` | `1.0` (omitted) |
+| Analytic (math) | `[2_Plus_2] → [4]` | `1.0` (omitted) |
+| Analytic (logic) | `[Triangle] → [Has_Three_Sides]` | `1.0` (omitted) |
+| Synthetic (strong empirical) | `[Smoking] → [Lung_Cancer]` | `0.95` (explicit) |
+| Synthetic (historical fact) | `[Einstein] → [General_Relativity]` | `0.95` (explicit) |
+| Synthetic (moderate evidence) | `[Mediterranean_Diet] → [Longevity]` | `0.8` (explicit) |
+
+If you are tempted to write `confidence=1.0` explicitly on an empirical edge:
+that is the symptom of mistaking analytic for synthetic. Use `0.95` instead.
+
+#### `certainty` as a Companion Field
+
+When you record a claim you do not believe (low `confidence`), or when source
+reliability and content truth diverge, pair `confidence` with `certainty`:
+
+| Scenario | `confidence` | `certainty` |
+|----------|-------------:|-------------:|
+| User claims meditation cured chronic pain | `0.95` (user clearly said it) | `0.35` (agent doubts the causal claim) |
+| Apocryphal historical anecdote | `0.95` (well-documented as *told*) | `0.2` (agent doubts it occurred) |
+| Agent's own honest skepticism | `0.2` | — (not needed; `confidence` alone suffices) |
+
+`certainty` is only required when source-reliability and content-truth diverge.
+For most edges, omit it.
+
+#### Intermediate Values Are Discouraged But Legal
+
+The protocol does **not** reject `confidence=0.85` or `0.72`. Existing STG
+databases contain thousands of such values from earlier protocol versions and
+remain fully valid. The recommendation is for **new** authoring: prefer the
+canonical set so retrieval, calibration analysis, and cross-agent reasoning
+operate on a small uniform value space.
 
 ### 5.3 Mandatory Fields by Context
 
@@ -444,18 +502,20 @@ RECOMMENDED: confidence (if <1.0), conditionality, time, source
 ### 5.4 Best Practices for LLMs
 
 #### DO:
-✅ **Include `confidence` whenever the claim is not 1.0** — the assertive default applies only to claims you are willing to assert as fact
+✅ **Reserve `confidence=1.0` (omission) for analytic truths only** — definitions, mathematical theorems, logical tautologies. For strong empirical claims, write `confidence=0.95` (§5.2)
+✅ **Pick `confidence` from the six canonical levels** — `1.0` / `0.95` / `0.8` / `0.5` / `0.2` / `0.01` (§5.2)
 ✅ **Use `source` for verifiable statements**
 ✅ **Break complex relations into simple chains**
 ✅ **Use namespaces for disambiguation** (`[Physics:Energy]` vs `[Psychology:Energy]`)
 ✅ **Preserve original language** (Chinese, Arabic, etc. are fully supported)
 ✅ **Use `time` for temporal context**
-✅ **Calibrate confidence accurately** — omit it when you mean 1.0; write the calibrated value otherwise
+✅ **Pair `confidence` + `certainty` when source-reliability and content-truth diverge** (§5.2)
 ✅ **Prefer meta-field-driven `rule` inference** — omit `rule` when the meta field unambiguously implies it (see §4.2.2)
 
 #### DON'T:
-❌ **Don't omit confidence for uncertain claims** — omission means 1.0
-❌ **Don't write `confidence=1.0` explicitly** — omit it; default applies
+❌ **Don't omit confidence for non-analytic claims** — omission means `1.0` (analytic). Empirical claims need explicit `0.95` or lower
+❌ **Don't write `confidence=1.0` explicitly on empirical edges** — that's a category error (analytic vs synthetic, §5.2)
+❌ **Don't invent intermediate confidence values** — prefer canonical `0.95` / `0.8` / `0.5` / `0.2` / `0.01` over `0.85` / `0.72` / `0.43` / etc.
 ❌ **Don't write `rule=...` when the meta field already implies it** — let inference fill it in
 ❌ **Don't include `strength` on non-causal edges** — it has no semantic content there (§4.1.7, §4.2.1)
 ❌ **Don't chain more than 5 nodes in one statement**
@@ -1036,16 +1096,22 @@ While LLMs generate STL text, the backend compiles to:
 
 ---
 
-## Appendix B: Confidence Calibration Examples
+## Appendix B: Confidence Calibration Examples (v1.2 canonical levels)
 
-| Statement | Confidence | Rationale |
-|-----------|------------|-----------|
-| `[Water] → [H2O] ::mod(rule="definitional")` | 0.99 | Definitional truth |
-| `[Einstein] → [Theory_Relativity] ::mod(author="Einstein")` | 0.98 | Historical fact, well-documented |
-| `[Smoking] → [Lung_Cancer] ::mod(rule="causal")` | 0.92 | Strong empirical evidence |
-| `[Diet_Mediterranean] → [Longevity] ::mod(rule="causal")` | 0.75 | Moderate evidence, correlational |
-| `[Dark_Matter] → [Modified_Gravity] ::mod(rule="logical")` | 0.60 | Theoretical, competing models |
-| `[Consciousness] → [Quantum_Microtubules] ::mod(rule="causal")` | 0.35 | Speculative, contested |
+Each example shows the **v1.2-compliant STL form**: analytic edges omit
+`confidence` (default `1.0`); synthetic edges write the canonical level
+explicitly.
+
+| Statement (as authored) | Level | Effective `confidence` | Rationale |
+|------------------------|-------|-----------------------:|-----------|
+| `[Water] → [H2O] ::mod(is_a="chemical_definition")` | Assertive | `1.0` (default) | Analytic — true by chemical definition |
+| `[Triangle] → [Three_Sides] ::mod(is_a="geometric_property")` | Assertive | `1.0` (default) | Analytic — true by geometric definition |
+| `[Smoking] → [Lung_Cancer] ::mod(action="causes", confidence=0.95)` | Confident | `0.95` | Strong empirical (synthetic) — explicit `0.95` |
+| `[Einstein] → [General_Relativity] ::mod(author="Einstein", confidence=0.95)` | Confident | `0.95` | Well-documented historical fact (synthetic) |
+| `[Diet_Mediterranean] → [Longevity] ::mod(action="contributes_to", confidence=0.8)` | Likely | `0.8` | Moderate correlational evidence |
+| `[Dark_Matter] → [Modified_Gravity] ::mod(rule="logical", confidence=0.5)` | Unknown | `0.5` | Competing models, no decisive evidence |
+| `[Consciousness] → [Quantum_Microtubules] ::mod(action="implements", confidence=0.2)` | Doubtful | `0.2` | Speculative, contested, evidence leans against |
+| `[User_Report:Meditation] → [Chronic_Pain_Cure] ::mod(action="causes", confidence=0.95, certainty=0.35)` | Confident + low certainty | `0.95` / `0.35` | User clearly made the claim (high `confidence`) but agent doubts the causation (low `certainty`) |
 
 ---
 
@@ -1099,13 +1165,35 @@ While LLMs generate STL text, the backend compiles to:
 
 ---
 
-**Version:** 1.1.0
+**Version:** 1.2.0
 **Date:** 2026-05-13
 **Status:** Production
 **Specification Compliance:** STL Core v1.0 + Supplement v1.0
 **License:** CC BY 4.0
 
 ### Changelog
+
+**v1.2.0 (2026-05-13)**
+- §5.2 *Confidence Score Calibration* rewritten — replaces 6 continuous bands
+  with **6 canonical discrete levels**: `1.0` / `0.95` / `0.8` / `0.5` / `0.2` /
+  `0.01`. LLMs SHOULD pick from the canonical set rather than inventing
+  intermediate values (e.g., `0.85`, `0.72`).
+- Introduced the **analytic/synthetic distinction**: `confidence=1.0` (the
+  default when omitted) is now reserved for *analytic truths* (definitions,
+  math, logic). Strong empirical/synthetic claims use `confidence=0.95`
+  explicitly. This honors the principle "no empirical fact is 100% certain"
+  while preserving 100% truth for definitional statements.
+- §5.2 gained guidance on **`certainty` as a companion field** — paired with
+  `confidence` when source-reliability and content-truth diverge (e.g., a
+  reliably-reported user claim that the agent doubts).
+- §4.2.1 default-value table updated with an analytic/synthetic callout.
+- §5.4 DO/DON'T expanded: prefer canonical levels; don't invent intermediates;
+  don't write `confidence=1.0` on empirical edges.
+- Appendix B *Confidence Calibration Examples* rewritten using canonical
+  levels and the analytic/synthetic frame.
+- **Backward compatible.** Existing STG databases with `confidence=0.85` /
+  `0.72` / `0.99` etc. remain fully valid; the canonical levels are a SHOULD
+  for new authoring, not a MUST for parsing.
 
 **v1.1.0 (2026-05-13)**
 - Added §4.2 *Default Value Omission* — `confidence` defaults to `1.0`,
