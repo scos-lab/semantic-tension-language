@@ -1,0 +1,97 @@
+════════════════════════════════════════════════════════════════════
+STL Token-Efficiency Benchmarks — results snapshot
+Run date: 2026-05-13T01:00:10Z
+Tokenizer: tiktoken cl100k_base
+Python:    Python 3.12.3
+tiktoken:  0.12.0
+════════════════════════════════════════════════════════════════════
+
+════ 01: STL vs JSON ═══════════════════════════════════════════════
+Sample                  STL tok  JSON-pretty   JSON-min   Δ pretty    Δ min
+──────────────────────────────────────────────────────────────────────────────
+1. Minimal edge               9           18         11    +100.0%   +22.2%
+2. Simple typed edge         23           43         25     +87.0%    +8.7%
+3. Causal claim              38           64         40     +68.4%    +5.3%
+4. Empirical lesson          54           81         57     +50.0%    +5.6%
+5. CJK anchors               52           78         54     +50.0%    +3.8%
+6. 3-edge chain             110          190        118     +72.7%    +7.3%
+──────────────────────────────────────────────────────────────────────────────
+TOTAL                       286          474        305     +65.7%    +6.6%
+
+STL uses 286 tokens.
+JSON-pretty uses 474 (+65.7% vs STL) → STL saves 39.7%
+JSON-min    uses 305 (+6.6% vs STL) → STL saves 6.2%
+
+══════════════════════════════════════════════════════════════════════════════
+AUDIT: full text of sample #4 (empirical lesson)
+══════════════════════════════════════════════════════════════════════════════
+
+── STL ──
+[OAuth_Refresh_Token] → [Auth_Failure] ::mod(rule="empirical", confidence=0.95, lesson="Testing-mode refresh tokens expire after 7 days; must publish app to Production", occurred_time="2026-04-23")
+[54 tokens, 197 chars]
+
+── JSON (pretty) ──
+{
+  "source": "OAuth_Refresh_Token",
+  "target": "Auth_Failure",
+  "modifiers": {
+    "rule": "empirical",
+    "confidence": 0.95,
+    "lesson": "Testing-mode refresh tokens expire after 7 days; must publish app to Production",
+    "occurred_time": "2026-04-23"
+  }
+}
+[81 tokens, 267 chars]
+
+── JSON (minified) ──
+{"source":"OAuth_Refresh_Token","target":"Auth_Failure","modifiers":{"rule":"empirical","confidence":0.95,"lesson":"Testing-mode refresh tokens expire after 7 days; must publish app to Production","occurred_time":"2026-04-23"}}
+[57 tokens, 227 chars]
+
+════ 02: Quote removal ═════════════════════════════════════════════
+Sample                   A:quoted   B:hybrid   C:none   B vs A   C vs A
+────────────────────────────────────────────────────────────────────────────
+Simple typed                   23         23       23    +0.0%    +0.0%
+Causal                         38         38       38    +0.0%    +0.0%
+Empirical lesson               53         53       53    +0.0%    +0.0%
+Long description               44         44       43    +0.0%    -2.3%
+CJK heavy                      88         88       88    +0.0%    +0.0%
+────────────────────────────────────────────────────────────────────────────
+TOTAL                         246        246      245    +0.0%    -0.4%
+
+Hybrid (only short fields unquoted) saves: 0.0%
+Full no-quotes saves:                      0.4%
+
+════════════════════════════════════════════════════════════════════════════
+BPE INSPECTION — why removing quotes saves almost nothing
+════════════════════════════════════════════════════════════════════════════
+
+  'rule="causal"'
+    5 tokens: ['rule', '="', 'ca', 'usal', '"']
+
+  'rule=causal'
+    4 tokens: ['rule', '=', 'ca', 'usal']
+
+  ', confidence=0.95'
+    6 tokens: [',', ' confidence', '=', '0', '.', '95']
+
+  'lesson="Testing 模式 OAuth 7 天过期"'
+    14 tokens: ['lesson', '="', 'Testing', ' �', '��', '式', ' OAuth', ' ', '7', ' �', '�', '过', '期', '"']
+
+  'lesson=Testing 模式 OAuth 7 天过期'
+    13 tokens: ['lesson', '=', 'Testing', ' �', '��', '式', ' OAuth', ' ', '7', ' �', '�', '过', '期']
+
+Key finding: BPE has merged `="` into a single token (the pattern is
+  ubiquitous in JSON/Python/JS training data). Removing the opening
+  quote saves zero tokens because there is no separate `"` token to
+  drop — it was already part of `="`.
+
+════ 03: Default omission (§4.2) ═══════════════════════════════════
+Case                               before    after     save
+------------------------------------------------------------
+Definitional (typical)                 28       16   +42.9%
+Causal (typical)                       34       29   +14.7%
+Empirical (typical)                    53       48    +9.4%
+Definitional w/ description            35       30   +14.3%
+Role/spec                              38       32   +15.8%
+------------------------------------------------------------
+TOTAL                                 188      155   +17.6%
