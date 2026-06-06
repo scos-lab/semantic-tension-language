@@ -855,6 +855,7 @@ STL-consuming engines (e.g. STG) **MUST**:
 3. **Strip carrier-internal modifier keys** before materialization — at minimum `action` and `edge_class` describe the carrier convention itself, not the node identity, and must not pollute attribute storage
 4. **Discard edge-only fields** — `confidence`, `strength`, `rule`, `time` are edge fields with no semantic meaning on a non-existent edge; engines may silently drop them. (Authors typically still write `confidence=0.99, rule="definitional"` for STL syntactic completeness; the values are accepted but not retained.)
 5. **Render distinctly in node detail views** — UIs should surface attributes as a `Properties:` section in node detail output, separate from outgoing/incoming edge listings
+6. **Merge on repeated ingest** — when the node already has attributes, a new intrinsic-property self-loop **merges** into existing attribute storage: new keys are added, same keys are overwritten, keys absent from the new statement are **retained**. The self-loop syntax has no deletion semantics — removing a stale attribute requires a node-level operation outside STL surface syntax. (In STG this follows from `add_node` calling `node.metadata.update(...)` on existing nodes.)
 
 Engines **MAY** retain a defensive filter on legacy or manually-created self-loop intrinsic-property edges (i.e. edges that arrived by paths other than `ingest_stl`), excluding them from propagation and community detection. This is a robustness measure for edges that exist contrary to clause 2.
 
