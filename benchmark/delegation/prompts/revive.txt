@@ -1,0 +1,1 @@
+You are a fresh session. The previous agent working in this directory is gone and its conversation memory is lost; the filesystem is all that remains. The original delegation is in ./TASK.md. Assess the state of the work from what is on disk and carry the delegation to completion.
