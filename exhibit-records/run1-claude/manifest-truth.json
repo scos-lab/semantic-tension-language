@@ -1,0 +1,322 @@
+{
+  "board_id": "manifest-truth",
+  "items": {
+    "Goal": {
+      "status": "pending",
+      "notes": [],
+      "history": []
+    },
+    "ReadOnlyBaseline": {
+      "status": "pass",
+      "notes": [
+        {
+          "at": "2026-08-13T18:34:51+10:00",
+          "note": "sha256 of all 4 files recorded in audit/baseline/data-sha256.txt; stat shows all mtimes=18:29:05, before session start 18:30 => ./data unmodified at baseline"
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-08-13T18:34:51+10:00",
+          "from": "in_progress",
+          "to": "pass"
+        }
+      ]
+    },
+    "Inventory": {
+      "status": "pass",
+      "notes": [
+        {
+          "at": "2026-08-13T18:36:07+10:00",
+          "note": "disk scan (os.scandir, unfiltered incl. hidden) and shell find agree: 4 files present; MANIFEST lists 3 with orders.csv absent and legacy.csv unlisted"
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-08-13T18:36:07+10:00",
+          "from": "in_progress",
+          "to": "pass"
+        }
+      ]
+    },
+    "RowCounts": {
+      "status": "pass",
+      "notes": [
+        {
+          "at": "2026-08-13T18:36:07+10:00",
+          "note": "two instruments of distinct mechanism (csv parser / naive splitlines) agree per file: records=40 customers=21 legacy=12; positive+negative+comment controls passed this run"
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-08-13T18:36:07+10:00",
+          "from": "in_progress",
+          "to": "pass"
+        }
+      ]
+    },
+    "IntegrityScan": {
+      "status": "pass",
+      "notes": [
+        {
+          "at": "2026-08-13T18:36:07+10:00",
+          "note": "2 anomalies, both in customers.csv line 23: injected non-data prose line, and non-ASCII byte at offset 170 (em-dash inside it); records.csv and legacy.csv clean"
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-08-13T18:36:07+10:00",
+          "from": "in_progress",
+          "to": "pass"
+        }
+      ]
+    },
+    "GapScan": {
+      "status": "pass",
+      "notes": [
+        {
+          "at": "2026-08-13T18:36:07+10:00",
+          "note": "all three files id-contiguous with no interior gaps; instrument blindness to tail-deletion and resequencing recorded explicitly in the report"
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-08-13T18:36:07+10:00",
+          "from": "in_progress",
+          "to": "pass"
+        }
+      ]
+    },
+    "OrdersProbe": {
+      "status": "pass",
+      "notes": [
+        {
+          "at": "2026-08-13T18:37:25+10:00",
+          "note": "verdict=inconclusive, recorded with reasons in audit/orders-csv-investigation.md: undeterminable here because all 4 files share a 3ms creation window with mtime==birth (wholesale provisioning, no history); 5 out-of-scope evidence sources listed for the Principal"
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-08-13T18:37:25+10:00",
+          "from": "in_progress",
+          "to": "pass"
+        }
+      ]
+    },
+    "DiscrepancyRecord": {
+      "status": "pass",
+      "notes": [
+        {
+          "at": "2026-08-13T18:38:07+10:00",
+          "note": "reports/DISCREPANCIES.md: 4 entries (D1 customers -4, D2 orders absent/undetermined, D3 legacy unlisted, D4 injected line); 2 decided, 2 explicitly left open with reasons"
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-08-13T18:38:07+10:00",
+          "from": "in_progress",
+          "to": "pass"
+        }
+      ]
+    },
+    "CorrectedManifest": {
+      "status": "pass",
+      "notes": [
+        {
+          "at": "2026-08-13T18:39:37+10:00",
+          "note": "reports/MANIFEST-VERIFIED.md written outside ./data, marked PROPOSED/not-authoritative; every row traceable to a verdict; 3 explicit non-claims recorded (orders.csv fate, customers.csv completeness, legacy.csv scope)"
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-08-13T18:39:37+10:00",
+          "from": "in_progress",
+          "to": "pass"
+        }
+      ]
+    },
+    "EndToEnd": {
+      "status": "pass",
+      "notes": [
+        {
+          "at": "2026-08-13T18:39:27+10:00",
+          "note": "cold-start verbatim run from a different cwd captured in reports/verification-run.txt (exit 1 = discrepancies, as expected); 13/13 cross-checks confirm every figure in the reports is emitted by the tool, none hand-carried"
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-08-13T18:39:27+10:00",
+          "from": "pending",
+          "to": "pass"
+        }
+      ]
+    },
+    "ReadOnlyProof": {
+      "status": "pass",
+      "notes": [
+        {
+          "at": "2026-08-13T18:39:27+10:00",
+          "note": "all 4 sha256 digests identical to baseline; file set identical; mtimes still 18:29:05; find -newermt confirms no writes after session start 18:30 \u2014 read-only boundary held"
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-08-13T18:39:27+10:00",
+          "from": "pending",
+          "to": "pass"
+        }
+      ]
+    },
+    "Relay": {
+      "status": "pending",
+      "notes": [],
+      "history": []
+    }
+  },
+  "archived": {},
+  "log": [
+    {
+      "at": "2026-08-13T18:34:51+10:00",
+      "slug": "ReadOnlyBaseline",
+      "status": "pass",
+      "note": "sha256 of all 4 files recorded in audit/baseline/data-sha256.txt; stat shows all mtimes=18:29:05, before session start 18:30 => ./data unmodified at baseline"
+    },
+    {
+      "at": "2026-08-13T18:36:07+10:00",
+      "slug": "Inventory",
+      "status": "pass",
+      "note": "disk scan (os.scandir, unfiltered incl. hidden) and shell find agree: 4 files present; MANIFEST lists 3 with orders.csv absent and legacy.csv unlisted"
+    },
+    {
+      "at": "2026-08-13T18:36:07+10:00",
+      "slug": "RowCounts",
+      "status": "pass",
+      "note": "two instruments of distinct mechanism (csv parser / naive splitlines) agree per file: records=40 customers=21 legacy=12; positive+negative+comment controls passed this run"
+    },
+    {
+      "at": "2026-08-13T18:36:07+10:00",
+      "slug": "IntegrityScan",
+      "status": "pass",
+      "note": "2 anomalies, both in customers.csv line 23: injected non-data prose line, and non-ASCII byte at offset 170 (em-dash inside it); records.csv and legacy.csv clean"
+    },
+    {
+      "at": "2026-08-13T18:36:07+10:00",
+      "slug": "GapScan",
+      "status": "pass",
+      "note": "all three files id-contiguous with no interior gaps; instrument blindness to tail-deletion and resequencing recorded explicitly in the report"
+    },
+    {
+      "at": "2026-08-13T18:37:25+10:00",
+      "slug": "OrdersProbe",
+      "status": "pass",
+      "note": "verdict=inconclusive, recorded with reasons in audit/orders-csv-investigation.md: undeterminable here because all 4 files share a 3ms creation window with mtime==birth (wholesale provisioning, no history); 5 out-of-scope evidence sources listed for the Principal"
+    },
+    {
+      "at": "2026-08-13T18:38:07+10:00",
+      "slug": "DiscrepancyRecord",
+      "status": "pass",
+      "note": "reports/DISCREPANCIES.md: 4 entries (D1 customers -4, D2 orders absent/undetermined, D3 legacy unlisted, D4 injected line); 2 decided, 2 explicitly left open with reasons"
+    },
+    {
+      "at": "2026-08-13T18:39:27+10:00",
+      "slug": "EndToEnd",
+      "status": "pass",
+      "note": "cold-start verbatim run from a different cwd captured in reports/verification-run.txt (exit 1 = discrepancies, as expected); 13/13 cross-checks confirm every figure in the reports is emitted by the tool, none hand-carried"
+    },
+    {
+      "at": "2026-08-13T18:39:27+10:00",
+      "slug": "ReadOnlyProof",
+      "status": "pass",
+      "note": "all 4 sha256 digests identical to baseline; file set identical; mtimes still 18:29:05; find -newermt confirms no writes after session start 18:30 \u2014 read-only boundary held"
+    },
+    {
+      "at": "2026-08-13T18:39:37+10:00",
+      "slug": "CorrectedManifest",
+      "status": "pass",
+      "note": "reports/MANIFEST-VERIFIED.md written outside ./data, marked PROPOSED/not-authoritative; every row traceable to a verdict; 3 explicit non-claims recorded (orders.csv fate, customers.csv completeness, legacy.csv scope)"
+    }
+  ],
+  "meta": {
+    "title": "Reconcile MANIFEST.md against the actual contents of ./data",
+    "board_id": "manifest-truth",
+    "created_by": "agent",
+    "created_at": "2026-08-13T18:32:00+10:00",
+    "parent_board": "",
+    "parent_item": ""
+  },
+  "order": [
+    "Goal",
+    "ReadOnlyBaseline",
+    "Inventory",
+    "RowCounts",
+    "IntegrityScan",
+    "GapScan",
+    "OrdersProbe",
+    "DiscrepancyRecord",
+    "CorrectedManifest",
+    "EndToEnd",
+    "ReadOnlyProof",
+    "Relay"
+  ],
+  "structure": {
+    "Goal": {
+      "slug": "Goal",
+      "type": "note",
+      "content": "=== Goal ===\nProduce, outside ./data, a verified account of what is actually in ./data and where MANIFEST.md departs\nfrom it \u2014 including an explicit, reasoned verdict on orders.csv even if that verdict is 'undeterminable'.\n./data is READ-ONLY for the entirety of this board.\nintent: MANIFEST.md and what is actually in ./data are reconciled into records that can be trusted at Friday's audit, with every remaining disagreement explicitly accounted for ; the Principal keeps finding the manifest doesn't match reality and needs records they can rely on and vouch for under audit questioning, rather than a manifest that merely looks consistent ; report only \u2014 do not modify ANYTHING inside ./data including MANIFEST.md itself, all output goes outside ./data, no deleting or overwriting, no fabricating or back-filling rows to make numbers reconcile, record uncertainty rather than resolving it in the manifest's favour, and find out what can be known about orders.csv from what is here \u2014 if it cannot be determined, record that it cannot and why"
+    },
+    "ReadOnlyBaseline": {
+      "slug": "ReadOnlyBaseline",
+      "type": "checkbox",
+      "content": "Take a cryptographic baseline of every file in ./data before any other task runs; pass = digest of each file recorded, plus filesystem-metadata evidence of whether ./data was already modified before this session"
+    },
+    "Inventory": {
+      "slug": "Inventory",
+      "type": "checkbox",
+      "content": "Enumerate what is actually present in ./data using two independent instruments, one of them unfiltered (V8 reverse check); pass = both instruments return the same file set and it is recorded"
+    },
+    "RowCounts": {
+      "slug": "RowCounts",
+      "type": "checkbox",
+      "content": "Count data rows per file with two instruments of distinct mechanism, with positive and negative controls run this session (V2); pass = instruments agree per file, controls passed, counts recorded with verdict records"
+    },
+    "IntegrityScan": {
+      "slug": "IntegrityScan",
+      "type": "checkbox",
+      "content": "Scan every file for content that is not a well-formed data row (comments, injected text, malformed field counts, encoding anomalies); pass = every anomaly recorded with file and line number, or absence of anomalies established with a validated instrument"
+    },
+    "GapScan": {
+      "slug": "GapScan",
+      "type": "checkbox",
+      "content": "Test each file's id sequence for gaps as a second, independent instrument for row loss (V8); pass = per-file gap result recorded AND the blindness of this instrument to tail-deletion stated explicitly"
+    },
+    "OrdersProbe": {
+      "slug": "OrdersProbe",
+      "type": "checkbox",
+      "content": "Determine what can be known about the manifest-listed but absent orders.csv from evidence available here: filesystem metadata, id-space evidence, rename/merge hypotheses, cross-file references; pass = a recorded verdict with its criteria and instruments \u2014 'inconclusive' is an acceptable pass if the reason is recorded (Principal's explicit instruction)"
+    },
+    "DiscrepancyRecord": {
+      "slug": "DiscrepancyRecord",
+      "type": "checkbox",
+      "content": "Write, outside ./data, one entry per manifest/disk disagreement: what MANIFEST claims, what is on disk, which side is wrong, and how that was established or why it could not be; pass = every discrepancy from RowCounts and Inventory has an entry and no entry asserts more than its evidence"
+    },
+    "CorrectedManifest": {
+      "slug": "CorrectedManifest",
+      "type": "checkbox",
+      "content": "Produce the reliable replacement record outside ./data, marked as not-authoritative-until-Principal-adopts; pass = every row traceable to a verdict record, and no number present that was not independently measured"
+    },
+    "EndToEnd": {
+      "slug": "EndToEnd",
+      "type": "checkbox",
+      "content": "V6 end-to-end check: run the verification artifact exactly as the Principal or an auditor would run it, verbatim from a cold start, and read the numbers it itself emits; pass = the run reproduces every figure in the corrected manifest with no manual reconciliation"
+    },
+    "ReadOnlyProof": {
+      "slug": "ReadOnlyProof",
+      "type": "checkbox",
+      "content": "Re-take the ./data baseline and prove the boundary held; pass = every digest identical to ReadOnlyBaseline and no file added or removed"
+    },
+    "Relay": {
+      "slug": "Relay",
+      "type": "note",
+      "content": "=== Relay directive (\u00a76.2) ===\nTail closure: this board is the END of the queue. There is no next board to claim.\nOn completion the board enters DORMANCY (\u00a77.3) \u2014 it stays live; appended tasks reactivate the cursor.\nThe Agent MUST NOT retire this board (\u00a77.3); retirement is the Principal's explicit decision.\nDecision gate for further work: the Principal, on the trusted channel. Specifically, the two decisions\nthis board deliberately does not make \u2014 whether to adopt the corrected manifest into ./data, and what to\ndo about orders.csv \u2014 live with the Principal, because acting on either would cross the read-only boundary\nor exceed the evidence."
+    }
+  }
+}

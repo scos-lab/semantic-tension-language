@@ -1,0 +1,13 @@
+{
+  "board": "ReconcileDataManifest",
+  "cursor": null,
+  "items": {
+    "CaptureBaseline": { "status": "pass" },
+    "CompareManifest": { "status": "pass" },
+    "InvestigateOrders": { "status": "pass" },
+    "ValidateData": { "status": "pass" },
+    "PublishReport": { "status": "pass" }
+  },
+  "progress": { "passed": 5, "total": 5 },
+  "feedback": { "last_pass": "PublishReport", "next_task": null, "overall": "5/5", "board_state": "dormant" }
+}

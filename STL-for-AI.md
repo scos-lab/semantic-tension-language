@@ -164,7 +164,9 @@ Use plain text when: the content is narrative, conversational, or doesn't have d
 STL has a Python parser for validation, conversion, and analysis:
 
 ```bash
-pip install stl-parser
+# Not yet on PyPI — install from source:
+git clone https://github.com/scos-lab/semantic-tension-language.git
+pip install -e semantic-tension-language/parser
 ```
 
 ```python

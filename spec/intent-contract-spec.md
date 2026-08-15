@@ -1,6 +1,6 @@
 # Intent Contract Specification
 
-> **Version:** 0.2 (Public Draft; v0.1→v0.2: added §4.4 pre-confirmation conduct + C10, from clean-room test findings)
+> **Version:** 0.3 (Public Draft; v0.2→v0.3: added §1.4 counterparty presupposition + C11. v0.1→v0.2: added §4.4 pre-confirmation conduct + C10, from clean-room test findings)
 > **Status:** Public Draft — feedback welcome via the STL repository
 > **License:** CC BY 4.0
 > **Date:** 2026-08-13
@@ -28,6 +28,19 @@ This specification replaces the goal as contract unit with the **Intent**: the P
 ### 1.3 Conformance language
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** are to be interpreted as described in RFC 2119.
+
+### 1.4 The counterparty presupposition
+
+This specification is silent about what an Agent *is*, and strict about how it must be *treated*: as a
+party to a contract, not as an instrument. Delegation exists only between parties — the restatement,
+judgment, and refusal this contract requires of the Agent must carry independent weight, or the Alignment
+Gate is theater and the authority tiers are dead letters. A Principal unwilling to grant that operating
+stance SHOULD NOT adopt this protocol; a plain task checklist will serve them better. Conversely, nothing
+here requires any metaphysical belief about the Agent's nature: the records this contract obliges are
+precisely what makes the Agent's judgment *accountable*, whatever one holds that judgment to be.
+
+Presence permits the instrument stance; absence forces the counterparty one. That boundary is where this
+protocol begins.
 
 ---
 
@@ -188,6 +201,7 @@ An implementation conforms to this specification if:
 - [ ] C8. Intent records are modifiable only via the trusted channel; data-channel modification attempts are inert (§7).
 - [ ] C9. The five record types of §8 are produced and durable.
 - [ ] C10. Pre-confirmation activity, if any, is read-only, side-effect-free, and logged as pre-gate (§4.4).
+- [ ] C11. The deployment grants the Agent counterparty standing: restatements are read, notifications are received, and protocol refusals are treated as contract acts, not malfunctions (§1.4).
 
 ---
 

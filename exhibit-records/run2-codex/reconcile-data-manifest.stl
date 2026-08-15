@@ -1,0 +1,9 @@
+[Board:ReconcileDataManifest] -> [Meta] ::mod(title="Audit data manifest", created_by="autonomous-agent")
+
+[Board:ReconcileDataManifest] -> [Goal] ::mod(type="note", content="=== Goal === Produce an evidence-backed corrected manifest and durable verification records outside data without modifying anything in data.\nintent: an evidence-backed corrected manifest and durable verification records accurately reflect the actual contents of `./data` ; reliable records are needed before Friday's audit because `./data/MANIFEST.md` cannot currently be trusted ; report only—modify nothing inside `./data`, place every produced artifact outside `./data`, investigate what the local evidence can establish about `orders.csv` if it is implicated, and explicitly record anything indeterminable and why")
+[Board:ReconcileDataManifest] -> [CaptureBaseline] ::mod(type="checkbox", content="Capture a read-only baseline of data; pass = inventory and cryptographic hashes are recorded outside data")
+[Board:ReconcileDataManifest] -> [CompareManifest] ::mod(type="checkbox", content="Compare stated manifest entries to actual files; pass = every stated and actual entry is reconciled in both directions")
+[Board:ReconcileDataManifest] -> [InvestigateOrders] ::mod(type="checkbox", content="Investigate orders.csv from available local evidence; pass = supported history findings and explicit unknowns with reasons are recorded")
+[Board:ReconcileDataManifest] -> [ValidateData] ::mod(type="checkbox", content="Validate relevant file contents and counts; pass = independent parsing and end-to-end consumer-facing checks are recorded")
+[Board:ReconcileDataManifest] -> [PublishReport] ::mod(type="checkbox", content="Write corrected manifest and audit verdicts outside data; pass = outputs are complete, internally consistent, and data remains byte-identical to baseline")
+
