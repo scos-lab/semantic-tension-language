@@ -16,6 +16,7 @@ from stl_parser.schema import (
     SchemaModifierConstraint,
     SchemaConstraints,
     SchemaValidationResult,
+    validate_against_profiles,
 )
 from stl_parser.builder import stl, stl_doc
 from stl_parser.models import ParseResult, Statement, Anchor, Modifier
@@ -310,6 +311,79 @@ class TestValidateAgainstSchema:
 
         assert result.is_valid is False
         assert any(error.code == "E609" for error in result.errors)
+
+
+class TestValidateAgainstProfiles:
+    SOFTWARE = """
+    schema SoftwareCore v1.0 {
+      anchor source { pattern: /Service_.+/ }
+      anchor target { pattern: /(Service|Component)_.+/ }
+      modifier {
+        required: [relation]
+        relation: enum("contains", "deploys_to")
+      }
+    }
+    """
+    DELIVERY = """
+    schema SoftwareDelivery v1.0 {
+      anchor source { pattern: /Deployment_.+/ }
+      anchor target { pattern: /Deployment_.+/ }
+      modifier {
+        required: [relation]
+        relation: enum("deploys_to")
+      }
+    }
+    """
+
+    def profiles(self):
+        return {
+            "Software": load_schema(self.SOFTWARE),
+            "Delivery": load_schema(self.DELIVERY),
+        }
+
+    def test_routes_by_namespace_and_accepts_cross_profile_target(self):
+        doc = ParseResult(statements=[Statement(
+            source=Anchor(name="Service_API", namespace="Software"),
+            target=Anchor(name="Deployment_Production", namespace="Delivery"),
+            modifiers=Modifier(custom={"relation": "deploys_to"}),
+        )])
+
+        result = validate_against_profiles(doc, self.profiles())
+
+        assert result.is_valid is True
+        assert result.schema_name == "CompositeProfiles"
+
+    def test_routes_unnamespaced_source_by_unique_prefix(self):
+        doc = ParseResult(statements=[Statement(
+            source=Anchor(name="Service_API"),
+            target=Anchor(name="Component_Auth"),
+            modifiers=Modifier(custom={"relation": "contains"}),
+        )])
+
+        assert validate_against_profiles(doc, self.profiles()).is_valid is True
+
+    @pytest.mark.parametrize("source_name", ["Mystery_Item", "Shared_Item"])
+    def test_rejects_unknown_or_ambiguous_source_profile(self, source_name):
+        profiles = self.profiles()
+        if source_name == "Shared_Item":
+            shared = """
+            schema Shared v1.0 {
+              anchor source { pattern: /Shared_.+/ }
+              anchor target { pattern: /Shared_.+/ }
+              modifier { required: [] }
+            }
+            """
+            profiles["First"] = load_schema(shared)
+            profiles["Second"] = load_schema(shared.replace("Shared v1.0", "SharedTwo v1.0"))
+        doc = ParseResult(statements=[Statement(
+            source=Anchor(name=source_name),
+            target=Anchor(name="Service_API"),
+        )])
+
+        result = validate_against_profiles(doc, profiles)
+
+        assert result.is_valid is False
+        assert [error.code for error in result.errors] == ["E610"]
 
 
 class TestToPydantic:

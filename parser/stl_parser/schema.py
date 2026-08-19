@@ -496,6 +496,80 @@ def validate_against_schema(
     )
 
 
+def validate_against_profiles(
+    parse_result: ParseResult,
+    profiles: Dict[str, STLSchema],
+) -> SchemaValidationResult:
+    """Validate statements using source-selected schemas and shared targets."""
+    errors: List[SchemaError] = []
+
+    for idx, statement in enumerate(parse_result.statements):
+        _, profile = _select_profile(statement.source, profiles)
+        if profile is None:
+            errors.append(SchemaError(
+                code="E610",
+                message=f"Statement {idx}: cannot select one profile for source "
+                        f"'{_anchor_id(statement.source)}'; known profiles: "
+                        f"{', '.join(sorted(profiles))}",
+                statement_index=idx,
+                field="source",
+            ))
+            continue
+
+        _validate_anchor_constraint(
+            statement.source, profile.source_anchor, "source", idx, errors
+        )
+        _validate_modifier_constraint(statement, profile.modifier, idx, errors)
+
+        if not any(
+            _matches_anchor(statement.target, candidate.target_anchor)
+            for candidate in profiles.values()
+        ):
+            errors.append(SchemaError(
+                code="E606",
+                message=f"Statement {idx}: target anchor '{_anchor_id(statement.target)}' "
+                        "does not match any registered profile",
+                statement_index=idx,
+                field="target",
+            ))
+
+    versions = ",".join(
+        f"{name}:{profile.version}" for name, profile in sorted(profiles.items())
+    )
+    return SchemaValidationResult(
+        is_valid=not errors,
+        errors=errors,
+        schema_name="CompositeProfiles",
+        schema_version=versions,
+    )
+
+
+def _select_profile(
+    anchor: Anchor,
+    profiles: Dict[str, STLSchema],
+) -> Tuple[Optional[str], Optional[STLSchema]]:
+    if anchor.namespace in profiles:
+        return anchor.namespace, profiles[anchor.namespace]
+
+    matches = [
+        (name, profile)
+        for name, profile in profiles.items()
+        if _matches_anchor(anchor, profile.source_anchor)
+    ]
+    if len(matches) != 1:
+        return None, None
+    return matches[0]
+
+
+def _matches_anchor(anchor: Anchor, constraint: SchemaAnchorConstraint) -> bool:
+    if constraint.namespace_required is not None:
+        if anchor.namespace != constraint.namespace_required:
+            return False
+    elif not constraint.namespace_optional and anchor.namespace is None:
+        return False
+    return constraint.pattern is None or re.fullmatch(constraint.pattern, anchor.name) is not None
+
+
 def _anchor_id(anchor: Anchor) -> str:
     """Return a namespace-aware graph node identifier."""
     return f"{anchor.namespace}:{anchor.name}" if anchor.namespace else anchor.name

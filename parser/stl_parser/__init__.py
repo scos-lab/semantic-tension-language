@@ -21,7 +21,14 @@ from .errors import STLError, STLParseError, STLWarning
 
 # New modules (Priority 1 Tooling)
 from .builder import stl, stl_doc, StatementBuilder
-from .schema import load_schema, validate_against_schema, STLSchema, to_pydantic, from_pydantic
+from .schema import (
+    load_schema,
+    validate_against_schema,
+    validate_against_profiles,
+    STLSchema,
+    to_pydantic,
+    from_pydantic,
+)
 from .llm import clean, repair, validate_llm_output, prompt_template, LLMValidationResult
 from .emitter import STLEmitter
 
@@ -75,6 +82,7 @@ __all__ = [
     # Schema (new)
     "load_schema",
     "validate_against_schema",
+    "validate_against_profiles",
     "STLSchema",
     "to_pydantic",
     "from_pydantic",
