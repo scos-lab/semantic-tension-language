@@ -8,7 +8,9 @@ from stl_parser import (
     ParseResult,
     Statement,
     load_schema,
+    parse_file,
     validate_against_schema,
+    validate_against_profiles,
 )
 
 
@@ -118,3 +120,21 @@ def test_legal_v1_1_supports_software_governance_concepts():
 
     assert schema.version == "v1.1"
     assert result.is_valid is True
+
+
+def test_small_project_example_validates_across_all_profiles():
+    example = SCHEMA_DIR / "examples" / "small-software-project.stl"
+    document = parse_file(str(example))
+    profiles = {
+        "Software": load_schema(str(SCHEMA_DIR / "software-core.stl.schema")),
+        "Delivery": load_schema(str(SCHEMA_DIR / "software-delivery.stl.schema")),
+        "Operations": load_schema(str(SCHEMA_DIR / "software-operations.stl.schema")),
+        "Assurance": load_schema(str(SCHEMA_DIR / "software-assurance.stl.schema")),
+        "Law": load_schema(str(SCHEMA_DIR / "legal.stl.schema")),
+    }
+
+    result = validate_against_profiles(document, profiles)
+
+    assert document.is_valid is True
+    assert result.is_valid is True, [error.message for error in result.errors]
+    assert {statement.source.namespace for statement in document.statements} == set(profiles)

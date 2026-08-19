@@ -1,0 +1,30 @@
+# Product intent and architecture
+[Software:Project_TinyShop] -> [Software:Requirement_Login] ::mod(relation="contains", description="The project includes authenticated access")
+[Software:Service_API] -> [Software:Requirement_Login] ::mod(relation="implements", technology="Python")
+[Software:Service_API] -> [Software:Component_Auth] ::mod(relation="contains")
+[Software:Component_Auth] -> [Software:Endpoint_Login] ::mod(relation="exposes", protocol="HTTPS")
+[Software:Component_Auth] -> [Software:DataStore_Customers] ::mod(relation="reads")
+
+# Verification and delivery
+[Delivery:Test_Login] -> [Software:Endpoint_Login] ::mod(relation="tests", status="passing")
+[Delivery:Pipeline_Main] -> [Delivery:Build_42] ::mod(relation="builds", commit="abc123")
+[Delivery:Build_42] -> [Delivery:Artifact_API] ::mod(relation="produces", version="1.0.0")
+[Delivery:Deployment_Production] -> [Delivery:Artifact_API] ::mod(relation="deploys")
+[Delivery:Deployment_Production] -> [Delivery:Environment_Production] ::mod(relation="deploys_to", timestamp="2026-08-19T10:30:00Z")
+
+# Runtime and incident response
+[Operations:Instance_API_1] -> [Software:Service_API] ::mod(relation="runs_as", environment="production")
+[Operations:Metric_Latency] -> [Software:Service_API] ::mod(relation="observes", unit="ms")
+[Operations:Alert_HighLatency] -> [Operations:Incident_42] ::mod(relation="triggers", severity="high")
+[Operations:Incident_42] -> [Software:Service_API] ::mod(relation="affects", status="resolved")
+[Operations:Remediation_AddIndex] -> [Operations:Incident_42] ::mod(relation="resolves")
+
+# Supply chain, security, privacy, and evidence
+[Assurance:SBOM_Release_1] -> [Software:Package_WebFramework] ::mod(relation="contains", version="1.0.0")
+[Assurance:Attestation_Build_42] -> [Delivery:Build_42] ::mod(relation="attests", source="https://example.test/attestations/42")
+[Assurance:Vulnerability_CVE_Example] -> [Software:Package_WebFramework] ::mod(relation="affects", severity="medium")
+[Assurance:Control_Encryption] -> [Software:DataStore_Customers] ::mod(relation="protects")
+[Assurance:Evidence_EncryptionTest] -> [Assurance:ComplianceRequirement_EncryptData] ::mod(relation="satisfies", status="verified")
+
+# Legal governance remains reusable across domains
+[Law:Regulation_DataProtection] -> [Assurance:ComplianceRequirement_EncryptData] ::mod(relation="governs", rule="logical", confidence=0.95, source="https://example.test/law/data-protection", jurisdiction="EU")
