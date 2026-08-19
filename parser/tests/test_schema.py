@@ -231,6 +231,86 @@ class TestValidateAgainstSchema:
         assert result.is_valid is False
         assert any("confidence" in e.message for e in result.errors)
 
+    @pytest.mark.parametrize(
+        ("field_type", "value"),
+        [("boolean", "true"), ("datetime", "19/08/2026")],
+    )
+    def test_rejects_invalid_declared_primitive_type(self, field_type, value):
+        schema = load_schema(f"""
+        schema Primitive v1.0 {{
+          modifier {{
+            required: [value]
+            value: {field_type}
+          }}
+        }}
+        """)
+        doc = ParseResult(statements=[Statement(
+            source=Anchor(name="A"),
+            target=Anchor(name="B"),
+            modifiers=Modifier(custom={"value": value}),
+        )])
+
+        result = validate_against_schema(doc, schema)
+
+        assert result.is_valid is False
+        assert [error.code for error in result.errors] == ["E604"]
+
+    @pytest.mark.parametrize(
+        ("field_type", "value"),
+        [("boolean", True), ("datetime", "2026-08-19T10:30:00Z")],
+    )
+    def test_accepts_valid_declared_primitive_type(self, field_type, value):
+        schema = load_schema(f"""
+        schema Primitive v1.0 {{
+          modifier {{
+            required: [value]
+            value: {field_type}
+          }}
+        }}
+        """)
+        doc = ParseResult(statements=[Statement(
+            source=Anchor(name="A"),
+            target=Anchor(name="B"),
+            modifiers=Modifier(custom={"value": value}),
+        )])
+
+        assert validate_against_schema(doc, schema).is_valid is True
+
+    def test_enforces_max_chain_length(self):
+        schema = load_schema("""
+        schema ShortPaths v1.0 {
+          modifier { required: [] }
+          constraints { max_chain_length: 2 }
+        }
+        """)
+        doc = ParseResult(statements=[
+            Statement(source=Anchor(name="A"), target=Anchor(name="B")),
+            Statement(source=Anchor(name="B"), target=Anchor(name="C")),
+            Statement(source=Anchor(name="C"), target=Anchor(name="D")),
+        ])
+
+        result = validate_against_schema(doc, schema)
+
+        assert result.is_valid is False
+        assert any(error.code == "E608" for error in result.errors)
+
+    def test_rejects_cycles_when_disallowed(self):
+        schema = load_schema("""
+        schema Acyclic v1.0 {
+          modifier { required: [] }
+          constraints { allow_cycles: false }
+        }
+        """)
+        doc = ParseResult(statements=[
+            Statement(source=Anchor(name="A"), target=Anchor(name="B")),
+            Statement(source=Anchor(name="B"), target=Anchor(name="A")),
+        ])
+
+        result = validate_against_schema(doc, schema)
+
+        assert result.is_valid is False
+        assert any(error.code == "E609" for error in result.errors)
+
 
 class TestToPydantic:
     """Tests for to_pydantic()."""
