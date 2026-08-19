@@ -1,0 +1,36 @@
+# Software Operations Schema
+# Runtime identity, observability, reliability, and incident response.
+
+schema SoftwareOperations v1.0 {
+    namespace "Operations"
+
+    anchor source {
+        pattern: /(Instance|Metric|Log|Trace|Alert|SLO|Runbook|Incident|Remediation)_[A-Za-z0-9_]+/
+    }
+
+    anchor target {
+        pattern: /(Instance|Metric|Log|Trace|Alert|SLO|Runbook|Incident|Remediation|System|Service|Component|Environment|Deployment)_[A-Za-z0-9_]+/
+    }
+
+    modifier {
+        required: [relation]
+        optional: [severity, status, value, unit, threshold, environment, source, time, timestamp, description]
+
+        relation: enum("runs_as", "runs_on", "observes", "measures", "emits", "monitors", "triggers", "violates", "causes", "affects", "mitigates", "resolves")
+        severity: enum("critical", "high", "medium", "low", "info")
+        status: string
+        value: string
+        unit: string
+        threshold: string
+        environment: string
+        source: string
+        time: datetime
+        timestamp: datetime
+        description: string
+    }
+
+    constraints {
+        min_statements: 1
+        max_statements: 1000
+    }
+}

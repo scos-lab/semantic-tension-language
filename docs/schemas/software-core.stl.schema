@@ -1,0 +1,36 @@
+# Software Core Schema
+# Product intent, ownership, architecture, source structure, data, and interfaces.
+
+schema SoftwareCore v1.0 {
+    namespace "Software"
+
+    anchor source {
+        pattern: /(Project|Requirement|Decision|Person|Team|System|Service|Component|Module|API|Endpoint|DataStore|Data|Package|SourceFile)_[A-Za-z0-9_]+/
+    }
+
+    anchor target {
+        pattern: /(Project|Requirement|Decision|Person|Team|System|Service|Component|Module|API|Endpoint|DataStore|Data|Package|SourceFile)_[A-Za-z0-9_]+/
+    }
+
+    modifier {
+        required: [relation]
+        optional: [confidence, source, description, technology, protocol, version, status, criticality, author, timestamp]
+
+        relation: enum("owns", "requires", "implements", "contains", "depends_on", "calls", "exposes", "reads", "writes", "documents", "supersedes")
+        confidence: float(0.0, 1.0)
+        source: string
+        description: string
+        technology: string
+        protocol: string
+        version: string
+        status: string
+        criticality: enum("critical", "high", "medium", "low")
+        author: string
+        timestamp: datetime
+    }
+
+    constraints {
+        min_statements: 1
+        max_statements: 1000
+    }
+}

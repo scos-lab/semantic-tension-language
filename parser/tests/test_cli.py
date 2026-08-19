@@ -76,7 +76,7 @@ class TestCli:
         """Test the 'validate' command with a non-existent file."""
         result = runner.invoke(app, ["validate", "nonexistent.stl"])
         assert result.exit_code != 0
-        assert "does not exist" in result.stderr
+        assert "does not exist" in result.output
 
     def test_convert_to_json(self, valid_stl_file):
         """Test the 'convert' command to JSON format."""

@@ -3,7 +3,7 @@
 Domain-specific schema validation for STL documents.
 
 **Module:** `stl_parser.schema`
-**Import:** `from stl_parser import load_schema, validate_against_schema, STLSchema`
+**Import:** `from stl_parser import load_schema, validate_against_schema, validate_against_profiles, STLSchema`
 
 ---
 
@@ -23,7 +23,7 @@ Parse a `.stl.schema` file into an `STLSchema` object.
 
 **Returns:** `STLSchema`
 
-**Raises:** `STLSchemaError` (E600-E603)
+**Raises:** `STLSchemaError` for schema parsing and loading failures
 
 **Example:**
 
@@ -50,7 +50,7 @@ Validate a `ParseResult` against schema constraints.
 - Anchor namespace and pattern requirements
 - Required modifier fields
 - Field type, range, and enum constraints
-- Document-level constraints (min/max statements)
+- Document-level constraints (statement count, maximum chain length, cycles)
 
 **Parameters:**
 
@@ -70,6 +70,32 @@ schema = load_schema("docs/schemas/medical.stl.schema")
 result = parse('[Symptom_Fever] -> [Condition_Infection] ::mod(rule="causal", confidence=0.8, strength=0.7)')
 validation = validate_against_schema(result, schema)
 print(validation.is_valid)
+```
+
+---
+
+## validate_against_profiles()
+
+```python
+validate_against_profiles(
+    parse_result: ParseResult,
+    profiles: Dict[str, STLSchema],
+) -> SchemaValidationResult
+```
+
+Validate a mixed-domain document. Each statement is validated by the schema selected from its source namespace, or by one unique source-pattern match when the namespace is absent. Targets may match any registered profile.
+
+Unknown and ambiguous source routing returns `E610`. The result uses `schema_name="CompositeProfiles"` and includes each profile version in `schema_version`.
+
+```python
+from stl_parser import parse_file, load_schema, validate_against_profiles
+
+document = parse_file("docs/schemas/examples/small-software-project.stl")
+profiles = {
+    "Software": load_schema("docs/schemas/software-core.stl.schema"),
+    "Delivery": load_schema("docs/schemas/software-delivery.stl.schema"),
+}
+validation = validate_against_profiles(document, profiles)
 ```
 
 ---

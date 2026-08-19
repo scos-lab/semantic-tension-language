@@ -106,6 +106,13 @@ class ErrorCode(str, Enum):
     E601_SCHEMA_VALIDATION_FAILED = "E601"
     E602_INVALID_SCHEMA_FORMAT = "E602"
     E603_SCHEMA_CONSTRAINT_VIOLATION = "E603"
+    E604_SCHEMA_TYPE = "E604"
+    E605_SCHEMA_DOCUMENT_COUNT = "E605"
+    E606_SCHEMA_ANCHOR = "E606"
+    E607_SCHEMA_REQUIRED_FIELD = "E607"
+    E608_SCHEMA_CHAIN_LENGTH = "E608"
+    E609_SCHEMA_CYCLE = "E609"
+    E610_SCHEMA_PROFILE_ROUTING = "E610"
 
     # LLM Errors (E700-E799)
     E700_LLM_CLEAN_ERROR = "E700"
@@ -357,6 +364,35 @@ ERROR_MESSAGES: Dict[str, Dict[str, str]] = {
     "E453": {
         "message": "Query type error",
         "suggestion": "Comparison operator is incompatible with field value type"
+    },
+    # Schema Errors
+    "E604": {
+        "message": "Schema field type mismatch",
+        "suggestion": "Use the primitive type declared by the schema"
+    },
+    "E605": {
+        "message": "Schema document count violation",
+        "suggestion": "Adjust the number of statements to the declared bounds"
+    },
+    "E606": {
+        "message": "Schema anchor violation",
+        "suggestion": "Use an anchor namespace and name accepted by the schema"
+    },
+    "E607": {
+        "message": "Required schema field missing",
+        "suggestion": "Add the modifier field required by the schema"
+    },
+    "E608": {
+        "message": "Schema chain length exceeded",
+        "suggestion": "Shorten the path or increase the schema limit"
+    },
+    "E609": {
+        "message": "Schema cycle violation",
+        "suggestion": "Remove the cycle or allow cycles in the schema"
+    },
+    "E610": {
+        "message": "Schema profile routing failed",
+        "suggestion": "Use a registered namespace or one unambiguous anchor prefix"
     },
     # Diff/Patch Errors
     "E950": {

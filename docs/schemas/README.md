@@ -2,7 +2,7 @@
 
 > **Version**: 1.0
 > **Status**: Active
-> **Last Updated**: 2026-02-13
+> **Last Updated**: 2026-08-19
 
 ## Overview
 
@@ -24,7 +24,13 @@ docs/schemas/
 ├── causal.stl.schema                  # Causal inference & analysis
 ├── historical.stl.schema              # Historical knowledge & events
 ├── medical.stl.schema                 # Medical/clinical domain
-└── legal.stl.schema                   # Legal reasoning & regulation
+├── legal.stl.schema                   # Legal reasoning & regulation
+├── software-core.stl.schema           # Product and architecture
+├── software-delivery.stl.schema       # Test, build, and deployment
+├── software-operations.stl.schema     # Runtime and incidents
+├── software-assurance.stl.schema      # Security, privacy, and provenance
+├── software.md                        # Software family guide
+└── examples/                          # Validated example documents
 ```
 
 ## Quick Start
@@ -64,7 +70,13 @@ else:
 | `causal` | Causal inference | confidence, rule, strength | Latin + underscore | 1.0 |
 | `historical` | Historical knowledge | confidence, time, source | Latin + Unicode | 1.0 |
 | `medical` | Medical/clinical | confidence, rule, source, domain | Prefixed (Symptom_, Drug_, etc.) | 1.0 |
-| `legal` | Legal reasoning | confidence, rule, source | Prefixed (Law_, Regulation_, etc.) | 1.0 |
+| `legal` | Legal reasoning | confidence, rule, source | Prefixed legal concepts | 1.1 |
+| `software-core` | Product and architecture | relation | Prefixed software concepts | 1.0 |
+| `software-delivery` | Test, build, release, deployment | relation | Prefixed delivery concepts | 1.0 |
+| `software-operations` | Runtime, telemetry, incidents | relation | Prefixed operations concepts | 1.0 |
+| `software-assurance` | Security, privacy, supply chain | relation | Prefixed assurance concepts | 1.0 |
+
+The index contains ten domain schemas. `_template.stl.schema` is a creation template and is not counted as a domain schema.
 
 ## Schema Syntax Reference
 
@@ -101,8 +113,8 @@ schema <Name> <Version> {
     constraints {
         min_statements: 1
         max_statements: 1000
-        max_chain_length: 5            # Parsed, not yet enforced
-        allow_cycles: false            # Parsed, not yet enforced
+        max_chain_length: 5            # Enforced for acyclic graphs
+        allow_cycles: false            # Enforced
     }
 }
 ```

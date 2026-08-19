@@ -16,10 +16,12 @@ from stl_parser.schema import (
     SchemaModifierConstraint,
     SchemaConstraints,
     SchemaValidationResult,
+    validate_against_profiles,
 )
 from stl_parser.builder import stl, stl_doc
 from stl_parser.models import ParseResult, Statement, Anchor, Modifier
 from stl_parser.errors import STLSchemaError
+from stl_parser.errors import get_error_info
 
 
 # ========================================
@@ -128,6 +130,10 @@ class TestLoadSchema:
         with pytest.raises(STLSchemaError):
             load_schema("not a valid schema")
 
+    @pytest.mark.parametrize("code", [f"E{number}" for number in range(604, 611)])
+    def test_new_schema_error_codes_have_public_messages(self, code):
+        assert get_error_info(code) is not None
+
 
 class TestValidateAgainstSchema:
     """Tests for validate_against_schema()."""
@@ -230,6 +236,182 @@ class TestValidateAgainstSchema:
         result = validate_against_schema(doc, schema)
         assert result.is_valid is False
         assert any("confidence" in e.message for e in result.errors)
+
+    @pytest.mark.parametrize(
+        ("field_type", "value"),
+        [("boolean", "true"), ("datetime", "19/08/2026")],
+    )
+    def test_rejects_invalid_declared_primitive_type(self, field_type, value):
+        schema = load_schema(f"""
+        schema Primitive v1.0 {{
+          modifier {{
+            required: [value]
+            value: {field_type}
+          }}
+        }}
+        """)
+        doc = ParseResult(statements=[Statement(
+            source=Anchor(name="A"),
+            target=Anchor(name="B"),
+            modifiers=Modifier(custom={"value": value}),
+        )])
+
+        result = validate_against_schema(doc, schema)
+
+        assert result.is_valid is False
+        assert [error.code for error in result.errors] == ["E604"]
+
+    @pytest.mark.parametrize(
+        ("field_type", "value"),
+        [("boolean", True), ("datetime", "2026-08-19T10:30:00Z")],
+    )
+    def test_accepts_valid_declared_primitive_type(self, field_type, value):
+        schema = load_schema(f"""
+        schema Primitive v1.0 {{
+          modifier {{
+            required: [value]
+            value: {field_type}
+          }}
+        }}
+        """)
+        doc = ParseResult(statements=[Statement(
+            source=Anchor(name="A"),
+            target=Anchor(name="B"),
+            modifiers=Modifier(custom={"value": value}),
+        )])
+
+        assert validate_against_schema(doc, schema).is_valid is True
+
+    def test_enforces_max_chain_length(self):
+        schema = load_schema("""
+        schema ShortPaths v1.0 {
+          modifier { required: [] }
+          constraints { max_chain_length: 2 }
+        }
+        """)
+        doc = ParseResult(statements=[
+            Statement(source=Anchor(name="A"), target=Anchor(name="B")),
+            Statement(source=Anchor(name="B"), target=Anchor(name="C")),
+            Statement(source=Anchor(name="C"), target=Anchor(name="D")),
+        ])
+
+        result = validate_against_schema(doc, schema)
+
+        assert result.is_valid is False
+        assert any(error.code == "E608" for error in result.errors)
+
+    def test_rejects_cycles_when_disallowed(self):
+        schema = load_schema("""
+        schema Acyclic v1.0 {
+          modifier { required: [] }
+          constraints { allow_cycles: false }
+        }
+        """)
+        doc = ParseResult(statements=[
+            Statement(source=Anchor(name="A"), target=Anchor(name="B")),
+            Statement(source=Anchor(name="B"), target=Anchor(name="A")),
+        ])
+
+        result = validate_against_schema(doc, schema)
+
+        assert result.is_valid is False
+        assert any(error.code == "E609" for error in result.errors)
+
+
+class TestValidateAgainstProfiles:
+    SOFTWARE = """
+    schema SoftwareCore v1.0 {
+      anchor source { pattern: /Service_.+/ }
+      anchor target { pattern: /(Service|Component)_.+/ }
+      modifier {
+        required: [relation]
+        relation: enum("contains", "deploys_to")
+      }
+    }
+    """
+    DELIVERY = """
+    schema SoftwareDelivery v1.0 {
+      anchor source { pattern: /Deployment_.+/ }
+      anchor target { pattern: /Deployment_.+/ }
+      modifier {
+        required: [relation]
+        relation: enum("deploys_to")
+      }
+    }
+    """
+
+    def profiles(self):
+        return {
+            "Software": load_schema(self.SOFTWARE),
+            "Delivery": load_schema(self.DELIVERY),
+        }
+
+    def test_routes_by_namespace_and_accepts_cross_profile_target(self):
+        doc = ParseResult(statements=[Statement(
+            source=Anchor(name="Service_API", namespace="Software"),
+            target=Anchor(name="Deployment_Production", namespace="Delivery"),
+            modifiers=Modifier(custom={"relation": "deploys_to"}),
+        )])
+
+        result = validate_against_profiles(doc, self.profiles())
+
+        assert result.is_valid is True
+        assert result.schema_name == "CompositeProfiles"
+
+    def test_routes_unnamespaced_source_by_unique_prefix(self):
+        doc = ParseResult(statements=[Statement(
+            source=Anchor(name="Service_API"),
+            target=Anchor(name="Component_Auth"),
+            modifiers=Modifier(custom={"relation": "contains"}),
+        )])
+
+        assert validate_against_profiles(doc, self.profiles()).is_valid is True
+
+    def test_rejects_target_prefix_that_conflicts_with_its_namespace(self):
+        doc = ParseResult(statements=[Statement(
+            source=Anchor(name="Service_API", namespace="Software"),
+            target=Anchor(name="Deployment_Production", namespace="Software"),
+            modifiers=Modifier(custom={"relation": "deploys_to"}),
+        )])
+
+        result = validate_against_profiles(doc, self.profiles())
+
+        assert result.is_valid is False
+        assert any(error.code == "E606" for error in result.errors)
+
+    def test_rejects_unknown_explicit_source_namespace(self):
+        doc = ParseResult(statements=[Statement(
+            source=Anchor(name="Service_API", namespace="Unknown"),
+            target=Anchor(name="Component_Auth", namespace="Software"),
+            modifiers=Modifier(custom={"relation": "contains"}),
+        )])
+
+        result = validate_against_profiles(doc, self.profiles())
+
+        assert [error.code for error in result.errors] == ["E610"]
+
+    @pytest.mark.parametrize("source_name", ["Mystery_Item", "Shared_Item"])
+    def test_rejects_unknown_or_ambiguous_source_profile(self, source_name):
+        profiles = self.profiles()
+        if source_name == "Shared_Item":
+            shared = """
+            schema Shared v1.0 {
+              anchor source { pattern: /Shared_.+/ }
+              anchor target { pattern: /Shared_.+/ }
+              modifier { required: [] }
+            }
+            """
+            profiles["First"] = load_schema(shared)
+            profiles["Second"] = load_schema(shared.replace("Shared v1.0", "SharedTwo v1.0"))
+        doc = ParseResult(statements=[Statement(
+            source=Anchor(name=source_name),
+            target=Anchor(name="Service_API"),
+        )])
+
+        result = validate_against_profiles(doc, profiles)
+
+        assert result.is_valid is False
+        assert [error.code for error in result.errors] == ["E610"]
 
 
 class TestToPydantic:
