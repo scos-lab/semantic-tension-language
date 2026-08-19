@@ -1,0 +1,34 @@
+# Software Delivery Schema
+# Verification and the path from source to a running release.
+
+schema SoftwareDelivery v1.0 {
+    namespace "Delivery"
+
+    anchor source {
+        pattern: /(Test|TestSuite|Pipeline|Build|Artifact|Release|Environment|Deployment)_[A-Za-z0-9_]+/
+    }
+
+    anchor target {
+        pattern: /(Test|TestSuite|Pipeline|Build|Artifact|Release|Environment|Deployment|Requirement|System|Service|Component|Module|API|Endpoint|Package|SourceFile)_[A-Za-z0-9_]+/
+    }
+
+    modifier {
+        required: [relation]
+        optional: [status, version, commit, source, timestamp, environment, tool, description]
+
+        relation: enum("tests", "triggers", "builds", "produces", "packages", "releases", "deploys", "deploys_to", "promotes_to", "verifies", "rolls_back")
+        status: string
+        version: string
+        commit: string
+        source: string
+        timestamp: datetime
+        environment: string
+        tool: string
+        description: string
+    }
+
+    constraints {
+        min_statements: 1
+        max_statements: 1000
+    }
+}

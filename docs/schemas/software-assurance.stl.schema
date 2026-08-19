@@ -1,0 +1,35 @@
+# Software Assurance Schema
+# Security, privacy, quality, provenance, licenses, and compliance evidence.
+
+schema SoftwareAssurance v1.0 {
+    namespace "Assurance"
+
+    anchor source {
+        pattern: /(Threat|Risk|Finding|Vulnerability|Control|Evidence|License|SBOM|Attestation|ProcessingActivity|DataCategory|ComplianceRequirement)_[A-Za-z0-9_]+/
+    }
+
+    anchor target {
+        pattern: /(Threat|Risk|Finding|Vulnerability|Control|Evidence|License|SBOM|Attestation|ProcessingActivity|DataCategory|ComplianceRequirement|Project|System|Service|Component|Module|API|Endpoint|DataStore|Data|Package|SourceFile|Artifact|Build|Deployment)_[A-Za-z0-9_]+/
+    }
+
+    modifier {
+        required: [relation]
+        optional: [severity, likelihood, impact, status, source, identifier, version, timestamp, description]
+
+        relation: enum("threatens", "affects", "detects", "reports", "mitigates", "protects", "satisfies", "violates", "licensed_under", "contains", "derived_from", "attests", "processes", "stores", "transfers", "retains")
+        severity: enum("critical", "high", "medium", "low", "info")
+        likelihood: float(0.0, 1.0)
+        impact: float(0.0, 1.0)
+        status: string
+        source: string
+        identifier: string
+        version: string
+        timestamp: datetime
+        description: string
+    }
+
+    constraints {
+        min_statements: 1
+        max_statements: 1000
+    }
+}

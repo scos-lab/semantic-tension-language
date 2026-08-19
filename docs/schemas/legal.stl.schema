@@ -13,24 +13,32 @@
 #     domain="data_protection", time="2018-05-25"
 #   )
 
-schema LegalReasoning v1.0 {
+schema LegalReasoning v1.1 {
 
     namespace "Law"
 
     anchor source {
-        pattern: /(Law|Regulation|Precedent|Court|Article|Section|Principle|Right|Obligation)_[A-Za-z0-9_]+/
+        pattern: /(Law|Regulation|Precedent|Court|Article|Section|Principle|Right|Obligation|Contract|License|Policy|Standard|Consent|Authority|Permission|Prohibition|Exception|Jurisdiction|LegalInterpretation)_[A-Za-z0-9_]+/
     }
 
     anchor target {
-        pattern: /(Law|Regulation|Precedent|Court|Article|Section|Principle|Right|Obligation|Effect|Penalty|Outcome)_[A-Za-z0-9_]+/
+        pattern: /(Law|Regulation|Precedent|Court|Article|Section|Principle|Right|Obligation|Effect|Penalty|Outcome|Contract|License|Policy|Standard|Consent|Authority|Permission|Prohibition|Exception|Jurisdiction|LegalInterpretation)_[A-Za-z0-9_]+/
     }
 
     modifier {
         required: [confidence, rule, source]
-        optional: [domain, time, author, location, timestamp]
+        optional: [domain, time, author, location, timestamp, relation, jurisdiction, authority, status, effective_date, expiry_date, citation, applicability]
 
-        confidence: float(0.7, 1.0)
+        confidence: float(0.0, 1.0)
         rule: enum("definitional", "logical", "causal", "empirical")
+        relation: enum("defines", "requires", "permits", "prohibits", "governs", "applies_to", "exempts", "supersedes", "enforces", "interprets")
+        jurisdiction: string
+        authority: string
+        status: enum("draft", "active", "suspended", "repealed", "expired")
+        effective_date: datetime
+        expiry_date: datetime
+        citation: string
+        applicability: string
     }
 
     constraints {
