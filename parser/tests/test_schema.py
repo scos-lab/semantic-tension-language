@@ -21,6 +21,7 @@ from stl_parser.schema import (
 from stl_parser.builder import stl, stl_doc
 from stl_parser.models import ParseResult, Statement, Anchor, Modifier
 from stl_parser.errors import STLSchemaError
+from stl_parser.errors import get_error_info
 
 
 # ========================================
@@ -128,6 +129,10 @@ class TestLoadSchema:
     def test_invalid_schema_raises(self):
         with pytest.raises(STLSchemaError):
             load_schema("not a valid schema")
+
+    @pytest.mark.parametrize("code", [f"E{number}" for number in range(604, 611)])
+    def test_new_schema_error_codes_have_public_messages(self, code):
+        assert get_error_info(code) is not None
 
 
 class TestValidateAgainstSchema:
@@ -361,6 +366,29 @@ class TestValidateAgainstProfiles:
         )])
 
         assert validate_against_profiles(doc, self.profiles()).is_valid is True
+
+    def test_rejects_target_prefix_that_conflicts_with_its_namespace(self):
+        doc = ParseResult(statements=[Statement(
+            source=Anchor(name="Service_API", namespace="Software"),
+            target=Anchor(name="Deployment_Production", namespace="Software"),
+            modifiers=Modifier(custom={"relation": "deploys_to"}),
+        )])
+
+        result = validate_against_profiles(doc, self.profiles())
+
+        assert result.is_valid is False
+        assert any(error.code == "E606" for error in result.errors)
+
+    def test_rejects_unknown_explicit_source_namespace(self):
+        doc = ParseResult(statements=[Statement(
+            source=Anchor(name="Service_API", namespace="Unknown"),
+            target=Anchor(name="Component_Auth", namespace="Software"),
+            modifiers=Modifier(custom={"relation": "contains"}),
+        )])
+
+        result = validate_against_profiles(doc, self.profiles())
+
+        assert [error.code for error in result.errors] == ["E610"]
 
     @pytest.mark.parametrize("source_name", ["Mystery_Item", "Shared_Item"])
     def test_rejects_unknown_or_ambiguous_source_profile(self, source_name):

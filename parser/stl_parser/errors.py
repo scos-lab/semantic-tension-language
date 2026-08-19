@@ -365,6 +365,35 @@ ERROR_MESSAGES: Dict[str, Dict[str, str]] = {
         "message": "Query type error",
         "suggestion": "Comparison operator is incompatible with field value type"
     },
+    # Schema Errors
+    "E604": {
+        "message": "Schema field type mismatch",
+        "suggestion": "Use the primitive type declared by the schema"
+    },
+    "E605": {
+        "message": "Schema document count violation",
+        "suggestion": "Adjust the number of statements to the declared bounds"
+    },
+    "E606": {
+        "message": "Schema anchor violation",
+        "suggestion": "Use an anchor namespace and name accepted by the schema"
+    },
+    "E607": {
+        "message": "Required schema field missing",
+        "suggestion": "Add the modifier field required by the schema"
+    },
+    "E608": {
+        "message": "Schema chain length exceeded",
+        "suggestion": "Shorten the path or increase the schema limit"
+    },
+    "E609": {
+        "message": "Schema cycle violation",
+        "suggestion": "Remove the cycle or allow cycles in the schema"
+    },
+    "E610": {
+        "message": "Schema profile routing failed",
+        "suggestion": "Use a registered namespace or one unambiguous anchor prefix"
+    },
     # Diff/Patch Errors
     "E950": {
         "message": "Diff type error",

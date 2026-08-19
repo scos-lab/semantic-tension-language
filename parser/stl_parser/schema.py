@@ -521,10 +521,7 @@ def validate_against_profiles(
         )
         _validate_modifier_constraint(statement, profile.modifier, idx, errors)
 
-        if not any(
-            _matches_anchor(statement.target, candidate.target_anchor)
-            for candidate in profiles.values()
-        ):
+        if not _target_matches_profiles(statement.target, profiles):
             errors.append(SchemaError(
                 code="E606",
                 message=f"Statement {idx}: target anchor '{_anchor_id(statement.target)}' "
@@ -550,6 +547,8 @@ def _select_profile(
 ) -> Tuple[Optional[str], Optional[STLSchema]]:
     if anchor.namespace in profiles:
         return anchor.namespace, profiles[anchor.namespace]
+    if anchor.namespace is not None:
+        return None, None
 
     matches = [
         (name, profile)
@@ -559,6 +558,16 @@ def _select_profile(
     if len(matches) != 1:
         return None, None
     return matches[0]
+
+
+def _target_matches_profiles(anchor: Anchor, profiles: Dict[str, STLSchema]) -> bool:
+    if anchor.namespace is not None:
+        profile = profiles.get(anchor.namespace)
+        return profile is not None and _matches_anchor(anchor, profile.target_anchor)
+    return any(
+        _matches_anchor(anchor, profile.target_anchor)
+        for profile in profiles.values()
+    )
 
 
 def _matches_anchor(anchor: Anchor, constraint: SchemaAnchorConstraint) -> bool:
