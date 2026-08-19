@@ -26,3 +26,6 @@ coverage.xml
 
 # mypy
 .mypy_cache/
+
+# Local feature worktrees
+.worktrees/
