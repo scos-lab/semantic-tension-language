@@ -14,17 +14,26 @@ schema SoftwareDelivery v1.0 {
 
     modifier {
         required: [relation]
-        optional: [status, version, commit, source, timestamp, environment, tool, description]
+        optional: [status, version, commit, source, timestamp, environment, tool, description, purl, slsa_provenance, artifact_uri]
 
         relation: enum("tests", "triggers", "builds", "produces", "packages", "releases", "deploys", "deploys_to", "promotes_to", "verifies", "rolls_back")
         status: string
         version: string
-        commit: string
+        commit: string(/[A-Fa-f0-9]{7,64}/)
         source: string
         timestamp: datetime
         environment: string
         tool: string
         description: string
+        purl: string(/pkg:.+/)
+        slsa_provenance: string
+        artifact_uri: string
+    }
+
+    edge {
+        source: [Test, TestSuite, Pipeline, Build, Artifact, Release, Environment, Deployment]
+        relation: [tests, triggers, builds, produces, packages, releases, deploys, deploys_to, promotes_to, verifies, rolls_back]
+        target: [Test, TestSuite, Pipeline, Build, Artifact, Release, Environment, Deployment, Requirement, System, Service, Component, Module, API, Endpoint, Package, SourceFile]
     }
 
     constraints {

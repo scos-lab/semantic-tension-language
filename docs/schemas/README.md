@@ -29,6 +29,7 @@ docs/schemas/
 ├── software-delivery.stl.schema       # Test, build, and deployment
 ├── software-operations.stl.schema     # Runtime and incidents
 ├── software-assurance.stl.schema      # Security, privacy, and provenance
+├── software.stl.profile               # Software family manifest
 ├── software.md                        # Software family guide
 └── examples/                          # Validated example documents
 ```
@@ -79,6 +80,8 @@ else:
 The index contains ten domain schemas. `_template.stl.schema` is a creation template and is not counted as a domain schema.
 
 ## Schema Syntax Reference
+
+The parser rejects unknown declarations and types. Repeatable typed-edge rules declare allowed triples with `edge { source: [Service] relation: [calls] target: [Endpoint] }`. String constraints support full-match patterns such as `cve: string(/CVE-[0-9]{4}-[0-9]{4,}/)`.
 
 ```
 schema <Name> <Version> {

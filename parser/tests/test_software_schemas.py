@@ -7,14 +7,37 @@ from stl_parser import (
     Modifier,
     ParseResult,
     Statement,
+    load_profile,
     load_schema,
     parse_file,
-    validate_against_schema,
     validate_against_profiles,
+    validate_against_schema,
 )
-
+from stl_parser.errors import STLSchemaError
 
 SCHEMA_DIR = Path(__file__).parents[2] / "docs" / "schemas"
+
+
+def test_software_profile_manifest_loads_all_namespaces():
+    profiles = load_profile(str(SCHEMA_DIR / "software.stl.profile"))
+    assert set(profiles) == {"Software", "Delivery", "Operations", "Assurance", "Law"}
+
+
+def test_profile_manifest_rejects_missing_include(tmp_path):
+    manifest = tmp_path / "missing.stl.profile"
+    manifest.write_text("profile Missing v1.0 { include: [absent] }", encoding="utf-8")
+    with pytest.raises(STLSchemaError, match="not found"):
+        load_profile(str(manifest))
+
+
+def test_profile_manifest_rejects_duplicate_namespaces(tmp_path):
+    manifest = tmp_path / "duplicate.stl.profile"
+    manifest.write_text("profile Duplicate v1.0 { include: [one, two] }", encoding="utf-8")
+    schema_text = 'schema Example v1.0 { namespace "Same" }'
+    (tmp_path / "one.stl.schema").write_text(schema_text, encoding="utf-8")
+    (tmp_path / "two.stl.schema").write_text(schema_text, encoding="utf-8")
+    with pytest.raises(STLSchemaError, match="Duplicate profile namespace"):
+        load_profile(str(manifest))
 
 
 PROFILE_CASES = [
@@ -125,13 +148,7 @@ def test_legal_v1_1_supports_software_governance_concepts():
 def test_small_project_example_validates_across_all_profiles():
     example = SCHEMA_DIR / "examples" / "small-software-project.stl"
     document = parse_file(str(example))
-    profiles = {
-        "Software": load_schema(str(SCHEMA_DIR / "software-core.stl.schema")),
-        "Delivery": load_schema(str(SCHEMA_DIR / "software-delivery.stl.schema")),
-        "Operations": load_schema(str(SCHEMA_DIR / "software-operations.stl.schema")),
-        "Assurance": load_schema(str(SCHEMA_DIR / "software-assurance.stl.schema")),
-        "Law": load_schema(str(SCHEMA_DIR / "legal.stl.schema")),
-    }
+    profiles = load_profile(str(SCHEMA_DIR / "software.stl.profile"))
 
     result = validate_against_profiles(document, profiles)
 

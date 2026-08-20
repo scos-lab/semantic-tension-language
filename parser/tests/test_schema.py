@@ -1,27 +1,64 @@
 # -*- coding: utf-8 -*-
 """Tests for stl_parser.schema module."""
 
-import pytest
-from pydantic import BaseModel, Field
+from datetime import datetime
 from typing import Optional
 
-from stl_parser.schema import (
-    load_schema,
-    validate_against_schema,
-    to_pydantic,
-    from_pydantic,
-    STLSchema,
-    FieldConstraint,
-    SchemaAnchorConstraint,
-    SchemaModifierConstraint,
-    SchemaConstraints,
-    SchemaValidationResult,
-    validate_against_profiles,
-)
+import pytest
+from pydantic import BaseModel, Field, ValidationError
+
 from stl_parser.builder import stl, stl_doc
-from stl_parser.models import ParseResult, Statement, Anchor, Modifier
-from stl_parser.errors import STLSchemaError
-from stl_parser.errors import get_error_info
+from stl_parser.errors import STLSchemaError, get_error_info
+from stl_parser.models import Anchor, Modifier, ParseResult, Statement
+from stl_parser.schema import (
+    SchemaEdgeRule,
+    from_pydantic,
+    load_schema,
+    to_pydantic,
+    validate_against_profiles,
+    validate_against_schema,
+)
+
+
+def test_typed_edge_rules_parse_and_validate():
+    schema = load_schema("""
+    schema Edges v1.0 {
+      modifier { required: [relation] relation: enum("contains") }
+      edge { source: [Service] relation: [contains] target: [Component] }
+    }
+    """)
+    assert schema.edge_rules == [SchemaEdgeRule(
+        source_types=["Service"], relations=["contains"], target_types=["Component"]
+    )]
+    valid = Statement(source=Anchor(name="Service_API"), target=Anchor(name="Component_Auth"),
+                      modifiers=Modifier(custom={"relation": "contains"}))
+    invalid = Statement(source=Anchor(name="Component_Auth"), target=Anchor(name="Service_API"),
+                        modifiers=Modifier(custom={"relation": "contains"}))
+    assert validate_against_schema(ParseResult(statements=[valid]), schema).is_valid
+    assert any(error.code == "E611" for error in
+               validate_against_schema(ParseResult(statements=[invalid]), schema).errors)
+
+
+def test_pydantic_conversion_preserves_types_and_constraints():
+    schema = load_schema("""
+    schema Fidelity v1.0 { modifier {
+      required: [kind, count, created]
+      optional: [identifier]
+      kind: enum("build", "release")
+      count: integer(1, 10)
+      created: datetime
+      identifier: string(/[A-Z]+-[0-9]+/)
+    } }
+    """)
+    model = to_pydantic(schema)
+    value = model(kind="build", count=2, created="2026-08-20T10:00:00", identifier="ABC-12")
+    assert isinstance(value.created, datetime)
+    with pytest.raises(ValidationError):
+        model(kind="other", count=2.0, created="2026-08-20T10:00:00", identifier="bad")
+    restored = from_pydantic(model)
+    assert restored.modifier.field_constraints["kind"].enum_values == ["build", "release"]
+    assert restored.modifier.field_constraints["created"].type == "datetime"
+    assert restored.modifier.field_constraints["identifier"].pattern == "[A-Z]+-[0-9]+"
 
 
 # ========================================
@@ -555,7 +592,7 @@ class TestToPydantic:
     def test_field_range_validation(self):
         schema = load_schema(BASIC_SCHEMA)
         Model = to_pydantic(schema)
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             # confidence below min 0.5
             Model(confidence=0.1, rule="causal")
 

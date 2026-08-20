@@ -14,7 +14,7 @@ schema SoftwareAssurance v1.0 {
 
     modifier {
         required: [relation]
-        optional: [severity, likelihood, impact, status, source, identifier, version, timestamp, description]
+        optional: [severity, likelihood, impact, status, source, identifier, version, timestamp, description, spdx_id, license_expression, cve, cwe, sarif_rule, purl]
 
         relation: enum("threatens", "affects", "detects", "reports", "mitigates", "protects", "satisfies", "violates", "licensed_under", "contains", "derived_from", "attests", "processes", "stores", "transfers", "retains")
         severity: enum("critical", "high", "medium", "low", "info")
@@ -26,6 +26,18 @@ schema SoftwareAssurance v1.0 {
         version: string
         timestamp: datetime
         description: string
+        spdx_id: string(/SPDXRef-[A-Za-z0-9.-]+/)
+        license_expression: string(/[A-Za-z0-9().+ -]+/)
+        cve: string(/CVE-[0-9]{4}-[0-9]{4,}/)
+        cwe: string(/CWE-[0-9]+/)
+        sarif_rule: string(/[A-Za-z0-9_.-]+/)
+        purl: string(/pkg:.+/)
+    }
+
+    edge {
+        source: [Threat, Risk, Finding, Vulnerability, Control, Evidence, License, SBOM, Attestation, ProcessingActivity, DataCategory, ComplianceRequirement]
+        relation: [threatens, affects, detects, reports, mitigates, protects, satisfies, violates, licensed_under, contains, derived_from, attests, processes, stores, transfers, retains]
+        target: [Threat, Risk, Finding, Vulnerability, Control, Evidence, License, SBOM, Attestation, ProcessingActivity, DataCategory, ComplianceRequirement, Project, System, Service, Component, Module, API, Endpoint, DataStore, Data, Package, SourceFile, Artifact, Build, Deployment]
     }
 
     constraints {

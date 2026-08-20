@@ -14,7 +14,7 @@ schema SoftwareOperations v1.0 {
 
     modifier {
         required: [relation]
-        optional: [severity, status, value, unit, threshold, environment, source, time, timestamp, description]
+        optional: [severity, status, value, unit, threshold, environment, source, time, timestamp, description, service_name]
 
         relation: enum("runs_as", "runs_on", "observes", "measures", "emits", "monitors", "triggers", "violates", "causes", "affects", "mitigates", "resolves")
         severity: enum("critical", "high", "medium", "low", "info")
@@ -27,6 +27,13 @@ schema SoftwareOperations v1.0 {
         time: datetime
         timestamp: datetime
         description: string
+        service_name: string(/[A-Za-z0-9_.-]+/)
+    }
+
+    edge {
+        source: [Instance, Metric, Log, Trace, Alert, SLO, Runbook, Incident, Remediation]
+        relation: [runs_as, runs_on, observes, measures, emits, monitors, triggers, violates, causes, affects, mitigates, resolves]
+        target: [Instance, Metric, Log, Trace, Alert, SLO, Runbook, Incident, Remediation, System, Service, Component, Environment, Deployment]
     }
 
     constraints {

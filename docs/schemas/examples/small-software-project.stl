@@ -7,7 +7,7 @@
 
 # Verification and delivery
 [Delivery:Test_Login] -> [Software:Endpoint_Login] ::mod(relation="tests", status="passing")
-[Delivery:Pipeline_Main] -> [Delivery:Build_42] ::mod(relation="builds", commit="abc123")
+[Delivery:Pipeline_Main] -> [Delivery:Build_42] ::mod(relation="builds", commit="abc1234")
 [Delivery:Build_42] -> [Delivery:Artifact_API] ::mod(relation="produces", version="1.0.0")
 [Delivery:Deployment_Production] -> [Delivery:Artifact_API] ::mod(relation="deploys")
 [Delivery:Deployment_Production] -> [Delivery:Environment_Production] ::mod(relation="deploys_to", timestamp="2026-08-19T10:30:00Z")

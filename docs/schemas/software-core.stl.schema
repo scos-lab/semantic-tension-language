@@ -14,7 +14,7 @@ schema SoftwareCore v1.0 {
 
     modifier {
         required: [relation]
-        optional: [confidence, source, description, technology, protocol, version, status, criticality, author, timestamp]
+        optional: [confidence, source, description, technology, protocol, version, status, criticality, author, timestamp, purl, operation_id]
 
         relation: enum("owns", "requires", "implements", "contains", "depends_on", "calls", "exposes", "reads", "writes", "documents", "supersedes")
         confidence: float(0.0, 1.0)
@@ -27,6 +27,14 @@ schema SoftwareCore v1.0 {
         criticality: enum("critical", "high", "medium", "low")
         author: string
         timestamp: datetime
+        purl: string(/pkg:.+/)
+        operation_id: string(/[A-Za-z_][A-Za-z0-9_.-]*/)
+    }
+
+    edge {
+        source: [Project, Requirement, Decision, Person, Team, System, Service, Component, Module, API, Endpoint, DataStore, Data, Package, SourceFile]
+        relation: [owns, requires, implements, contains, depends_on, calls, exposes, reads, writes, documents, supersedes]
+        target: [Project, Requirement, Decision, Person, Team, System, Service, Component, Module, API, Endpoint, DataStore, Data, Package, SourceFile]
     }
 
     constraints {

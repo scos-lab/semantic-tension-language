@@ -17,21 +17,18 @@ Usage:
 import os
 import re
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set, Tuple, Type
+from pathlib import Path
+from typing import Any, Dict, List, Literal, Optional, Tuple, Type, get_args, get_origin
 
 import networkx as nx
 from pydantic import BaseModel, Field, create_model
 
+from .errors import ErrorCode, STLSchemaError
 from .models import (
     Anchor,
-    Modifier,
-    Statement,
     ParseResult,
-    ParseError,
-    ParseWarning,
+    Statement,
 )
-from .errors import STLSchemaError, ErrorCode
-
 
 # ========================================
 # DATA MODELS
@@ -75,6 +72,14 @@ class SchemaConstraints(BaseModel):
     max_statements: Optional[int] = Field(None, description="Maximum statement count")
 
 
+class SchemaEdgeRule(BaseModel):
+    """Allowed source type, relation, and target type combinations."""
+
+    source_types: List[str]
+    relations: List[str]
+    target_types: List[str]
+
+
 class STLSchema(BaseModel):
     """Top-level schema model for STL document validation."""
 
@@ -85,6 +90,7 @@ class STLSchema(BaseModel):
     target_anchor: SchemaAnchorConstraint = Field(default_factory=SchemaAnchorConstraint)
     modifier: SchemaModifierConstraint = Field(default_factory=SchemaModifierConstraint)
     constraints: SchemaConstraints = Field(default_factory=SchemaConstraints)
+    edge_rules: List[SchemaEdgeRule] = Field(default_factory=list)
 
 
 class SchemaError(BaseModel):
@@ -126,7 +132,7 @@ _TOKEN_RE = re.compile(
     (?P<comment>\#[^\n]*)               |
     (?P<string>"[^"]*"|'[^']*')         |
     (?P<number>-?\d+(?:\.\d+)?)         |
-    (?P<keyword>schema|anchor|modifier|constraints|namespace|source|target|
+    (?P<keyword>schema|anchor|modifier|constraints|edge|namespace|source|target|relation|
                 required|optional|pattern|float|enum|string|datetime|boolean|integer|
                 max_chain_length|allow_cycles|min_statements|max_statements|
                 true|false)             |
@@ -264,6 +270,12 @@ class _SchemaParser:
                 schema.constraints = self._parse_constraints_block()
                 self._expect_value("}")
 
+            elif keyword == "edge":
+                self._advance()
+                self._expect_value("{")
+                schema.edge_rules.append(self._parse_edge_block())
+                self._expect_value("}")
+
             else:
                 raise STLSchemaError(
                     code=ErrorCode.E602_INVALID_SCHEMA_FORMAT,
@@ -312,6 +324,29 @@ class _SchemaParser:
                 )
 
         return constraint
+
+    def _parse_edge_block(self) -> SchemaEdgeRule:
+        values: Dict[str, List[str]] = {}
+        while self._peek() and self._peek()[1] != "}":
+            key = self._advance()[1]
+            if key not in {"source", "relation", "target"}:
+                raise STLSchemaError(
+                    code=ErrorCode.E602_INVALID_SCHEMA_FORMAT,
+                    message=f"Unknown edge rule field '{key}'",
+                )
+            self._expect_value(":")
+            values[key] = self._parse_string_list()
+        missing = {"source", "relation", "target"} - values.keys()
+        if missing:
+            raise STLSchemaError(
+                code=ErrorCode.E602_INVALID_SCHEMA_FORMAT,
+                message=f"Edge rule missing: {', '.join(sorted(missing))}",
+            )
+        return SchemaEdgeRule(
+            source_types=values["source"],
+            relations=values["relation"],
+            target_types=values["target"],
+        )
 
     def _parse_modifier_block(self) -> SchemaModifierConstraint:
         """Parse modifier constraint block."""
@@ -363,6 +398,9 @@ class _SchemaParser:
                     fc.max_value = float(args[1])
             elif type_name == "enum":
                 fc.enum_values = args
+            elif type_name == "string" and args:
+                pattern = args[0]
+                fc.pattern = pattern[1:-1] if pattern.startswith("/") and pattern.endswith("/") else pattern
 
         return fc
 
@@ -454,6 +492,52 @@ def load_schema(source: str) -> STLSchema:
     return _parse_schema_text(text)
 
 
+def load_profile(source: str) -> Dict[str, STLSchema]:
+    """Load the schemas included by a ``.stl.profile`` manifest."""
+    path = Path(source)
+    if not path.is_file():
+        raise STLSchemaError(
+            code=ErrorCode.E400_FILE_NOT_FOUND,
+            message=f"Profile file not found: {source}",
+        )
+    text = path.read_text(encoding="utf-8")
+    match = re.fullmatch(
+        r"\s*profile\s+[A-Za-z_]\w*\s+v?[\w.]+\s*\{\s*"
+        r"include\s*:\s*\[([^]]*)\]\s*\}\s*",
+        re.sub(r"#[^\n]*", "", text),
+        re.DOTALL,
+    )
+    if not match:
+        raise STLSchemaError(
+            code=ErrorCode.E602_INVALID_SCHEMA_FORMAT,
+            message="Invalid STL profile manifest",
+        )
+    profiles: Dict[str, STLSchema] = {}
+    for raw_name in match.group(1).split(","):
+        name = raw_name.strip().strip('"\'')
+        if not name:
+            continue
+        schema_path = path.parent / f"{name}.stl.schema"
+        schema = load_schema(str(schema_path))
+        if not schema.namespace:
+            raise STLSchemaError(
+                code=ErrorCode.E602_INVALID_SCHEMA_FORMAT,
+                message=f"Included schema '{name}' has no namespace",
+            )
+        if schema.namespace in profiles:
+            raise STLSchemaError(
+                code=ErrorCode.E602_INVALID_SCHEMA_FORMAT,
+                message=f"Duplicate profile namespace '{schema.namespace}'",
+            )
+        profiles[schema.namespace] = schema
+    if not profiles:
+        raise STLSchemaError(
+            code=ErrorCode.E602_INVALID_SCHEMA_FORMAT,
+            message="Profile manifest includes no schemas",
+        )
+    return profiles
+
+
 def validate_against_schema(
     parse_result: ParseResult,
     schema: STLSchema,
@@ -505,6 +589,7 @@ def validate_against_schema(
         _validate_anchor_constraint(stmt.source, schema.source_anchor, "source", idx, errors)
         _validate_anchor_constraint(stmt.target, schema.target_anchor, "target", idx, errors)
         _validate_modifier_constraint(stmt, schema.modifier, idx, errors)
+        _validate_edge_rules(stmt, schema.edge_rules, idx, errors)
 
     return SchemaValidationResult(
         is_valid=len(errors) == 0,
@@ -543,6 +628,7 @@ def validate_against_profiles(
             statement.source, profile.source_anchor, "source", idx, errors
         )
         _validate_modifier_constraint(statement, profile.modifier, idx, errors)
+        _validate_edge_rules(statement, profile.edge_rules, idx, errors)
 
         if not _target_matches_profiles(statement.target, profiles):
             errors.append(SchemaError(
@@ -664,6 +750,37 @@ def _validate_graph_constraints(
                 message=f"Maximum chain length exceeded: {chain_length} > "
                         f"{constraints.max_chain_length}",
             ))
+
+
+def _validate_edge_rules(
+    statement: Statement,
+    rules: List[SchemaEdgeRule],
+    statement_index: int,
+    errors: List[SchemaError],
+) -> None:
+    if not rules:
+        return
+    relation = None
+    if statement.modifiers is not None:
+        relation = getattr(statement.modifiers, "relation", None)
+        if relation is None:
+            relation = statement.modifiers.custom.get("relation")
+    source_type = statement.source.name.split("_", 1)[0]
+    target_type = statement.target.name.split("_", 1)[0]
+    if any(
+        source_type in rule.source_types
+        and relation in rule.relations
+        and target_type in rule.target_types
+        for rule in rules
+    ):
+        return
+    errors.append(SchemaError(
+        code="E611",
+        message=f"Statement {statement_index}: edge "
+                f"{source_type} -[{relation}]-> {target_type} is not allowed",
+        statement_index=statement_index,
+        field="relation",
+    ))
 
 
 def _validate_anchor_constraint(
@@ -814,7 +931,7 @@ def _validate_modifier_constraint(
                     statement_index=stmt_idx,
                     field=field_name,
                 ))
-            elif fc.pattern and not re.match(fc.pattern, val):
+            elif fc.pattern and not re.fullmatch(fc.pattern, val):
                 errors.append(SchemaError(
                     code="E603",
                     message=f"Statement {stmt_idx}: '{field_name}' value '{val}' "
@@ -882,6 +999,10 @@ def to_pydantic(schema: STLSchema) -> Type[BaseModel]:
             field_kwargs["ge"] = fc.min_value
         if fc.max_value is not None:
             field_kwargs["le"] = fc.max_value
+        if fc.pattern is not None:
+            field_kwargs["pattern"] = fc.pattern
+        if fc.type == "integer":
+            field_kwargs["strict"] = True
 
         is_required = field_name in schema.modifier.required_fields
         if not is_required:
@@ -946,8 +1067,10 @@ def _schema_type_to_python(fc: FieldConstraint) -> type:
         "integer": int,
         "string": str,
         "boolean": bool,
-        "datetime": str,
+        "datetime": datetime,
     }
+    if fc.type == "enum" and fc.enum_values:
+        return Literal.__getitem__(tuple(fc.enum_values))
     return type_map.get(fc.type, Any)
 
 
@@ -977,6 +1100,10 @@ def _python_field_to_constraint(field_info) -> Optional[FieldConstraint]:
         type_name = "boolean"
     elif annotation is str:
         type_name = "string"
+    elif annotation is datetime:
+        type_name = "datetime"
+    elif get_origin(annotation) is Literal:
+        return FieldConstraint(type="enum", enum_values=list(get_args(annotation)))
 
     fc = FieldConstraint(type=type_name)
 
@@ -986,5 +1113,7 @@ def _python_field_to_constraint(field_info) -> Optional[FieldConstraint]:
             fc.min_value = float(meta.ge)
         if hasattr(meta, "le") and meta.le is not None:
             fc.max_value = float(meta.le)
+        if hasattr(meta, "pattern") and meta.pattern is not None:
+            fc.pattern = meta.pattern
 
     return fc

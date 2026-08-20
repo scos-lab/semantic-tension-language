@@ -12,7 +12,7 @@ The software schema family models a small project's complete lifecycle without f
 | `software-assurance` | `Assurance` | Security, privacy, supply chain, licenses, controls, and evidence |
 | `legal` | `Law` | Laws, regulations, contracts, policies, legal duties, and interpretations |
 
-Use one profile with `validate_against_schema()` for a focused document. Use all relevant profiles with `validate_against_profiles()` when statements cross lifecycle boundaries.
+Use one profile with `validate_against_schema()` for a focused document. Use `software.stl.profile` with `validate_against_profiles()` when statements cross lifecycle boundaries.
 
 ## Naming
 
@@ -51,21 +51,17 @@ The permitted relations are declared in each `.stl.schema` file. Unknown custom 
 ## Composite validation
 
 ```python
-from stl_parser import parse_file, load_schema, validate_against_profiles
+from stl_parser import parse_file, load_profile, validate_against_profiles
 
 document = parse_file("docs/schemas/examples/small-software-project.stl")
-profiles = {
-    "Software": load_schema("docs/schemas/software-core.stl.schema"),
-    "Delivery": load_schema("docs/schemas/software-delivery.stl.schema"),
-    "Operations": load_schema("docs/schemas/software-operations.stl.schema"),
-    "Assurance": load_schema("docs/schemas/software-assurance.stl.schema"),
-    "Law": load_schema("docs/schemas/legal.stl.schema"),
-}
+profiles = load_profile("docs/schemas/software.stl.profile")
 
 result = validate_against_profiles(document, profiles)
 ```
 
 Routing uses the source namespace first. For an unnamespaced source, exactly one source-prefix pattern must match. Missing or ambiguous matches produce `E610`. A target may match the target pattern of any registered profile, which permits legal-to-software and assurance-to-delivery edges.
+
+Software profiles declare typed `edge` rules; an unlisted source-prefix, relation, and target-prefix triple produces `E611`. Statement counts apply per routed profile, while cycle policy and the strictest chain limit apply to the complete graph. Optional interoperable fields cover Package URLs, SPDX/license expressions, CVE/CWE, OpenAPI operation IDs, Git commits, SLSA provenance, service names, SARIF rules, and artifact URIs.
 
 ## Legal and software governance
 

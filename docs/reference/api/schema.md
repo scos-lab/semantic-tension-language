@@ -3,7 +3,7 @@
 Domain-specific schema validation for STL documents.
 
 **Module:** `stl_parser.schema`
-**Import:** `from stl_parser import load_schema, validate_against_schema, validate_against_profiles, STLSchema`
+**Import:** `from stl_parser import load_schema, load_profile, validate_against_schema, validate_against_profiles, STLSchema`
 
 ---
 
@@ -24,6 +24,12 @@ Parse a `.stl.schema` file into an `STLSchema` object.
 **Returns:** `STLSchema`
 
 **Raises:** `STLSchemaError` for schema parsing and loading failures
+
+Parsing is fail-closed: unknown declarations, constraints, and field types are errors.
+
+## load_profile()
+
+`load_profile(path: str) -> Dict[str, STLSchema]` loads a `.stl.profile` manifest, resolves includes relative to it, and keys schemas by unique namespace.
 
 **Example:**
 
@@ -85,7 +91,7 @@ validate_against_profiles(
 
 Validate a mixed-domain document. Each statement is validated by the schema selected from its source namespace, or by one unique source-pattern match when the namespace is absent. Targets may match any registered profile.
 
-Unknown and ambiguous source routing returns `E610`. The result uses `schema_name="CompositeProfiles"` and includes each profile version in `schema_version`.
+Unknown and ambiguous source routing returns `E610`. Routed statement counts apply per profile; cycle policy and the strictest chain limit apply globally. The result uses `schema_name="CompositeProfiles"` and includes each profile version in `schema_version`.
 
 ```python
 from stl_parser import parse_file, load_schema, validate_against_profiles
@@ -135,4 +141,4 @@ to_pydantic(schema: STLSchema) -> type
 from_pydantic(model_class: type) -> STLSchema
 ```
 
-Convert between `STLSchema` and dynamically generated Pydantic model classes. Advanced use case for runtime validation.
+Convert between `STLSchema` and dynamic Pydantic models. Enum fields use `Literal`, datetime fields use `datetime`, integers are strict, and string patterns are preserved.
