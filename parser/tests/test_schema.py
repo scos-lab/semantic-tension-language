@@ -130,6 +130,29 @@ class TestLoadSchema:
         with pytest.raises(STLSchemaError):
             load_schema("not a valid schema")
 
+    @pytest.mark.parametrize(
+        "schema_text",
+        [
+            "schema X v1.0 { unknown { } }",
+            "schema X v1.0 { anchor source { unknown: optional } }",
+            "schema X v1.0 { constraints { unknown: 1 } }",
+            "schema X v1.0 { modifier { value: enmu } }",
+        ],
+    )
+    def test_rejects_unknown_schema_declarations(self, schema_text):
+        with pytest.raises(STLSchemaError) as exc_info:
+            load_schema(schema_text)
+
+        assert exc_info.value.code == "E602"
+
+    def test_missing_schema_path_reports_file_error(self, tmp_path):
+        missing = tmp_path / "missing.stl.schema"
+
+        with pytest.raises(STLSchemaError) as exc_info:
+            load_schema(str(missing))
+
+        assert exc_info.value.code == "E400"
+
     @pytest.mark.parametrize("code", [f"E{number}" for number in range(604, 611)])
     def test_new_schema_error_codes_have_public_messages(self, code):
         assert get_error_info(code) is not None
@@ -316,6 +339,31 @@ class TestValidateAgainstSchema:
 
         assert result.is_valid is False
         assert any(error.code == "E609" for error in result.errors)
+
+    @pytest.mark.parametrize(
+        ("value", "expected_valid"),
+        [(1, True), (1.0, False), (1.5, False), (True, False), ("1", False)],
+    )
+    def test_integer_fields_are_strict(self, value, expected_valid):
+        schema = load_schema("""
+        schema IntegerValue v1.0 {
+          modifier {
+            required: [count]
+            count: integer(0, 10)
+          }
+        }
+        """)
+        document = ParseResult(statements=[Statement(
+            source=Anchor(name="A"),
+            target=Anchor(name="B"),
+            modifiers=Modifier(custom={"count": value}),
+        )])
+
+        result = validate_against_schema(document, schema)
+
+        assert result.is_valid is expected_valid
+        if not expected_valid:
+            assert any(error.code == "E604" for error in result.errors)
 
 
 class TestValidateAgainstProfiles:

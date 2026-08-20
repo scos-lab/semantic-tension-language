@@ -265,8 +265,10 @@ class _SchemaParser:
                 self._expect_value("}")
 
             else:
-                # Skip unknown top-level keyword
-                self._advance()
+                raise STLSchemaError(
+                    code=ErrorCode.E602_INVALID_SCHEMA_FORMAT,
+                    message=f"Unknown top-level schema declaration '{keyword}'",
+                )
 
         self._expect_value("}")
         return schema
@@ -304,8 +306,10 @@ class _SchemaParser:
                 constraint.pattern = val
 
             else:
-                # Skip unknown keys
-                self._advance()
+                raise STLSchemaError(
+                    code=ErrorCode.E602_INVALID_SCHEMA_FORMAT,
+                    message=f"Unknown anchor constraint '{key}'",
+                )
 
         return constraint
 
@@ -332,6 +336,13 @@ class _SchemaParser:
         """Parse a single field type constraint like float(0.5, 1.0) or enum("a", "b")."""
         tok = self._advance()
         type_name = tok[1]
+
+        supported_types = {"float", "integer", "string", "enum", "datetime", "boolean"}
+        if type_name not in supported_types:
+            raise STLSchemaError(
+                code=ErrorCode.E602_INVALID_SCHEMA_FORMAT,
+                message=f"Unknown modifier field type '{type_name}'",
+            )
 
         fc = FieldConstraint(type=type_name)
 
@@ -384,6 +395,11 @@ class _SchemaParser:
                 sc.min_statements = int(val)
             elif key == "max_statements":
                 sc.max_statements = int(val)
+            else:
+                raise STLSchemaError(
+                    code=ErrorCode.E602_INVALID_SCHEMA_FORMAT,
+                    message=f"Unknown document constraint '{key}'",
+                )
 
         return sc
 
@@ -417,10 +433,13 @@ def load_schema(source: str) -> STLSchema:
         >>> schema = load_schema('schema EventLog v1.0 { ... }')
     """
     # Determine if source is a file path or raw text
-    if (
-        source.strip().endswith(".stl.schema")
-        or source.strip().endswith(".schema")
-    ) and os.path.isfile(source.strip()):
+    is_schema_path = source.strip().endswith((".stl.schema", ".schema"))
+    if is_schema_path and not os.path.isfile(source.strip()):
+        raise STLSchemaError(
+            code=ErrorCode.E400_FILE_NOT_FOUND,
+            message=f"Schema file not found: {source.strip()}",
+        )
+    if is_schema_path:
         try:
             with open(source.strip(), "r", encoding="utf-8") as f:
                 text = f.read()
@@ -692,11 +711,36 @@ def _validate_modifier_constraint(
             continue  # Not present, skip (required check is separate)
 
         # Type/range check
-        if fc.type in ("float", "integer"):
-            if not isinstance(val, (int, float)):
+        if fc.type == "float":
+            if not isinstance(val, (int, float)) or isinstance(val, bool):
                 errors.append(SchemaError(
                     code="E604",
                     message=f"Statement {stmt_idx}: '{field_name}' must be numeric, got {type(val).__name__}",
+                    statement_index=stmt_idx,
+                    field=field_name,
+                ))
+                continue
+            if fc.min_value is not None and val < fc.min_value:
+                errors.append(SchemaError(
+                    code="E603",
+                    message=f"Statement {stmt_idx}: '{field_name}' value {val} < min {fc.min_value}",
+                    statement_index=stmt_idx,
+                    field=field_name,
+                ))
+            if fc.max_value is not None and val > fc.max_value:
+                errors.append(SchemaError(
+                    code="E603",
+                    message=f"Statement {stmt_idx}: '{field_name}' value {val} > max {fc.max_value}",
+                    statement_index=stmt_idx,
+                    field=field_name,
+                ))
+
+        elif fc.type == "integer":
+            if not isinstance(val, int) or isinstance(val, bool):
+                errors.append(SchemaError(
+                    code="E604",
+                    message=f"Statement {stmt_idx}: '{field_name}' must be integer, "
+                            f"got {type(val).__name__}",
                     statement_index=stmt_idx,
                     field=field_name,
                 ))
