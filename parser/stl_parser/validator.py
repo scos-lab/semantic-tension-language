@@ -441,7 +441,7 @@ def check_warnings(statement: Statement) -> List[STLWarning]:
                 context={"anchor": anchor.name}
             ))
 
-        if re.search(r'\d{3,}', anchor.name):
+        if "_" not in anchor.name and "-" not in anchor.name and re.search(r'\d{3,}', anchor.name):
             warnings.append(STLWarning(
                 code=WarningCode.W002_UNUSUAL_ANCHOR_NAME,
                 message=f"Anchor name '{anchor.name}' contains many digits",

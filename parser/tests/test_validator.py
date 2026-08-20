@@ -349,6 +349,19 @@ class TestWarningChecks:
         many_digits_warnings = [w for w in warnings if w.code == WarningCode.W002_UNUSUAL_ANCHOR_NAME and "many digits" in w.message]
         assert len(many_digits_warnings) == 1
 
+    def test_check_warnings_allows_descriptive_generated_anchor(self):
+        statement = Statement(
+            source=Anchor(name="merge_review_20260820t201000z_a7k3_m328"),
+            target=Anchor(name="ReviewResult"),
+        )
+
+        warnings = check_warnings(statement)
+
+        assert not any(
+            warning.code == WarningCode.W002_UNUSUAL_ANCHOR_NAME
+            for warning in warnings
+        )
+
 
 class TestStatementValidation:
     """Tests for validate_statement function."""
