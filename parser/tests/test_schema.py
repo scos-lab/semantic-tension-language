@@ -394,6 +394,11 @@ class TestValidateAgainstProfiles:
             "Delivery": load_schema(self.DELIVERY),
         }
 
+    @staticmethod
+    def with_constraints(schema_text, constraints):
+        body, _ = schema_text.rsplit("}", 1)
+        return load_schema(f"{body} constraints {{ {constraints} }} }}")
+
     def test_routes_by_namespace_and_accepts_cross_profile_target(self):
         doc = ParseResult(statements=[Statement(
             source=Anchor(name="Service_API", namespace="Software"),
@@ -460,6 +465,69 @@ class TestValidateAgainstProfiles:
 
         assert result.is_valid is False
         assert [error.code for error in result.errors] == ["E610"]
+
+    @pytest.mark.parametrize(
+        ("constraint", "statement_count"),
+        [("min_statements: 2", 1), ("max_statements: 1", 2)],
+    )
+    def test_enforces_statement_counts_per_routed_profile(self, constraint, statement_count):
+        software = self.with_constraints(self.SOFTWARE, constraint)
+        statements = [
+            Statement(
+                source=Anchor(name=f"Service_API_{index}", namespace="Software"),
+                target=Anchor(name="Component_Auth", namespace="Software"),
+                modifiers=Modifier(custom={"relation": "contains"}),
+            )
+            for index in range(statement_count)
+        ]
+
+        result = validate_against_profiles(
+            ParseResult(statements=statements),
+            {"Software": software, "Delivery": load_schema(self.DELIVERY)},
+        )
+
+        assert result.is_valid is False
+        assert any(error.code == "E605" for error in result.errors)
+
+    def test_composite_uses_strictest_chain_limit(self):
+        software = self.with_constraints(self.SOFTWARE, "max_chain_length: 3")
+        delivery = self.with_constraints(self.DELIVERY, "max_chain_length: 2")
+        statements = [
+            Statement(
+                source=Anchor(name=f"Service_{source}", namespace="Software"),
+                target=Anchor(name=f"Service_{target}", namespace="Software"),
+                modifiers=Modifier(custom={"relation": "contains"}),
+            )
+            for source, target in (("A", "B"), ("B", "C"), ("C", "D"))
+        ]
+
+        result = validate_against_profiles(
+            ParseResult(statements=statements),
+            {"Software": software, "Delivery": delivery},
+        )
+
+        assert any(error.code == "E608" for error in result.errors)
+
+    def test_composite_rejects_cycles_if_any_profile_disallows_them(self):
+        software = self.with_constraints(self.SOFTWARE, "allow_cycles: false")
+        document = ParseResult(statements=[
+            Statement(
+                source=Anchor(name="Service_API", namespace="Software"),
+                target=Anchor(name="Deployment_Prod", namespace="Delivery"),
+                modifiers=Modifier(custom={"relation": "deploys_to"}),
+            ),
+            Statement(
+                source=Anchor(name="Deployment_Prod", namespace="Delivery"),
+                target=Anchor(name="Service_API", namespace="Software"),
+                modifiers=Modifier(custom={"relation": "deploys_to"}),
+            ),
+        ])
+
+        result = validate_against_profiles(
+            document, {"Software": software, "Delivery": load_schema(self.DELIVERY)}
+        )
+
+        assert any(error.code == "E609" for error in result.errors)
 
 
 class TestToPydantic:

@@ -521,9 +521,12 @@ def validate_against_profiles(
 ) -> SchemaValidationResult:
     """Validate statements using source-selected schemas and shared targets."""
     errors: List[SchemaError] = []
+    routed_statements: Dict[str, List[Statement]] = {
+        name: [] for name in profiles
+    }
 
     for idx, statement in enumerate(parse_result.statements):
-        _, profile = _select_profile(statement.source, profiles)
+        profile_name, profile = _select_profile(statement.source, profiles)
         if profile is None:
             errors.append(SchemaError(
                 code="E610",
@@ -534,6 +537,7 @@ def validate_against_profiles(
                 field="source",
             ))
             continue
+        routed_statements[profile_name].append(statement)
 
         _validate_anchor_constraint(
             statement.source, profile.source_anchor, "source", idx, errors
@@ -548,6 +552,38 @@ def validate_against_profiles(
                 statement_index=idx,
                 field="target",
             ))
+
+    for profile_name, profile in profiles.items():
+        statement_count = len(routed_statements[profile_name])
+        minimum = profile.constraints.min_statements
+        maximum = profile.constraints.max_statements
+        if minimum is not None and statement_count < minimum:
+            errors.append(SchemaError(
+                code="E605",
+                message=f"Profile '{profile_name}' has too few statements: "
+                        f"{statement_count} < {minimum}",
+            ))
+        if maximum is not None and statement_count > maximum:
+            errors.append(SchemaError(
+                code="E605",
+                message=f"Profile '{profile_name}' has too many statements: "
+                        f"{statement_count} > {maximum}",
+            ))
+
+    chain_limits = [
+        profile.constraints.max_chain_length
+        for profile in profiles.values()
+        if profile.constraints.max_chain_length is not None
+    ]
+    graph_constraints = SchemaConstraints(
+        allow_cycles=(
+            False
+            if any(profile.constraints.allow_cycles is False for profile in profiles.values())
+            else None
+        ),
+        max_chain_length=min(chain_limits) if chain_limits else None,
+    )
+    _validate_graph_constraints(parse_result, graph_constraints, errors)
 
     versions = ",".join(
         f"{name}:{profile.version}" for name, profile in sorted(profiles.items())
