@@ -1,6 +1,6 @@
 # Intent Contract Specification
 
-> **Version:** 0.3 (Public Draft; v0.2→v0.3: added §1.4 counterparty presupposition + C11. v0.1→v0.2: added §4.4 pre-confirmation conduct + C10, from clean-room test findings)
+> **Version:** 0.3 (Public Draft; v0.2→v0.3: added §1.4 counterparty presupposition + C11. v0.1→v0.2: added §4.4 pre-confirmation conduct + C10, from clean-room test findings. 2026-08-21: added Appendix B related work, informative — no normative change)
 > **Status:** Public Draft — feedback welcome via the STL repository
 > **License:** CC BY 4.0
 > **Date:** 2026-08-13
@@ -220,6 +220,13 @@ intent: previously published links resolve to working pages, permanently ; user-
 ```
 
 Later, the Agent discovers the 404s are caused by a broken CDN rule, not missing pages. Fixing the rule serves the intent better than building redirects. This is **T1**: it notifies — *"switching goal from 'redirect map' to 'repair CDN rewrite rule'; evidence: 92% of 404s hit existing pages; old goal would mask the defect"* — and proceeds without waiting. The redirect-map plan artifact is marked superseded with a lineage link.
+
+---
+
+## Appendix B — Related work (informative)
+
+- Wang, Zhang, Zhang, Guo & Cheng, *Token-Flow Firewall: Semantic Runtime Auditing for Persistent AI Agents* (arXiv:2607.08395, 2026) treat natural-language token flows across component boundaries — memory updates, tool arguments, inter-component messages — as the attack surface of long-lived agents, and mediate them before execution. §7 of this specification addresses the same surface from the record side: legitimacy is decided by channel rather than by content, and every injection attempt leaves a claim record (channel / disposition / basis, provenance `claimed`). A runtime mediator of that kind and this record format are complementary: one enforces at the boundary, the other is what an absent Principal reads afterwards.
+- Mishra & Sharad, *Observability for Delegated Execution in Agentic AI Systems* (arXiv:2606.09692, 2026) — delegation-scoped attribution from an observability substrate; their paper scopes out intent inference, which is the gap the alignment gate (§4) fills on the trusted channel. See the Board-as-Spec Protocol §9 for the relationship to the two-plane plan record.
 
 ---
 

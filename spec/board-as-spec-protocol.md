@@ -1,6 +1,6 @@
 # Board-as-Spec Protocol
 
-> **Version:** 0.2 (Public Draft; v0.1→v0.2: added §5.1 note-status rule, §5.2 transition set + C11/C12, from clean-room test findings)
+> **Version:** 0.2 (Public Draft; v0.1→v0.2: added §5.1 note-status rule, §5.2 transition set + C11/C12, from clean-room test findings. 2026-08-21: added §9 related work, informative — no normative change)
 > **Status:** Public Draft — feedback welcome via the STL repository
 > **License:** CC BY 4.0
 > **Date:** 2026-08-13
@@ -203,6 +203,12 @@ The board is the source of truth. The Agent's working context degrades — long 
 - [ ] C10. Deletion is recoverable; completed boards go dormant rather than auto-retire (§4.2, §7.3).
 - [ ] C11. The execution plane enforces the §5.2 transition set; off-cursor completions are recorded as such.
 - [ ] C12. Note items carry no status (§5.1).
+
+---
+
+## 9. Related Work (informative)
+
+- Mishra & Sharad, *Observability for Delegated Execution in Agentic AI Systems* (arXiv:2606.09692, 2026) show that delegation-scoped execution is not recoverable from audit logs and execution traces alone, and propose an observability substrate whose information model separates an *authority graph* from an *execution graph*. This protocol's two write planes (§4) make the same separation at the plan-record level: structure (what was delegated) and state (what was done) are written through different paths and merged by slug. The two are complementary — their substrate binds delegation context at execution time; this protocol defines the plan record that context would point to. Neither attempts intent inference; intent is established separately, on the trusted channel, by the Intent Contract Specification.
 
 ---
 
