@@ -1,3 +1,5 @@
+> ⚠️ **Frozen snapshot (v1.7.x).** This copy of `stl-parser` is kept for reference only and no longer receives updates. The canonical, actively developed package is **[scos-lab/STL-TOOLS](https://github.com/scos-lab/STL-TOOLS)** — `pip install stl-parser` (v1.9+ on PyPI). Please open parser issues and pull requests there.
+
 # STL Parser (v1.7.0)
 
 **A comprehensive Python toolkit for Semantic Tension Language (STL) — parse, build, validate, query, diff, stream, and repair structured knowledge.**

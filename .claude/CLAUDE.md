@@ -9,7 +9,7 @@
 
 | Item | Value |
 |------|-------|
-| **Package** | `stl-parser` v1.7.0 |
+| **Package** | `stl-parser` v1.7.0 — **frozen snapshot**; canonical source is [scos-lab/STL-TOOLS](https://github.com/scos-lab/STL-TOOLS) (v1.9+, PyPI) |
 | **Python** | >=3.9 |
 | **License** | Apache 2.0 (code), CC BY 4.0 (spec) |
 | **Repo** | `https://github.com/scos-lab/semantic-tension-language` |

@@ -43,10 +43,10 @@ A comprehensive Python toolkit for working with STL, with feature parity to the 
 ### Quick Install
 
 ```bash
-git clone https://github.com/scos-lab/semantic-tension-language.git
-cd semantic-tension-language/parser
-pip install -e .
+pip install stl-parser
 ```
+
+> **Note:** the canonical `stl-parser` source lives in [scos-lab/STL-TOOLS](https://github.com/scos-lab/STL-TOOLS) (v1.9+, published to PyPI). The `parser/` directory in this repository is a **frozen 1.7.x snapshot** kept for reference — please open parser issues and pull requests against STL-TOOLS.
 
 ### Quick Example
 
@@ -83,6 +83,12 @@ stl patch a.stl diff.json                  # Apply patch
 - [STL Core Specification v1.0](./spec/stl-core-spec-v1.0.md)
 - [STL Core Specification Supplement](./spec/stl-core-spec-v1.0-supplement.md)
 
+### Trust-Layer Protocol Suite (public draft)
+Three self-contained specs for delegated agent work — the guided tour is at [stl-lang.org/trust-layer](https://stl-lang.org/trust-layer), and [the exhibit](https://stl-lang.org/exhibit) walks through a clean-room run.
+- [Intent Contract](./spec/intent-contract-spec.md) — an alignment gate before work starts; a misread intent structurally cannot acquire authority
+- [Board-as-Spec Protocol](./spec/board-as-spec-protocol.md) — a plan format that keeps structure and execution state on separate planes
+- [Eval / Verdict Vocabulary](./spec/eval-verdict-vocabulary.md) — claim provenance, confidence levels, and verification discipline
+
 ### Developer Documentation
 - [Getting Started](./docs/getting-started/) — Installation, quickstart, key concepts
 - [Tutorials](./docs/tutorials/) — Step-by-step guides for each capability
@@ -109,7 +115,7 @@ semantic-tension-language/
 │   ├── guides/              # How-to guides
 │   ├── schemas/             # Domain schema library (6 domains)
 │   └── stlc/                # STLC semantic specifications (10 specs)
-└── parser/                  # Python package (stl-parser)
+└── parser/                  # FROZEN 1.7.x snapshot of stl-parser — canonical source: scos-lab/STL-TOOLS
     ├── stl_parser/          # Source (19 modules)
     └── tests/               # Test suite (530 tests, 88% coverage)
 ```
@@ -123,7 +129,7 @@ semantic-tension-language/
 
 ## Contributing
 
-STL is an open standard. We welcome issues, discussions, and contributions. See [parser/CONTRIBUTING.md](./parser/CONTRIBUTING.md) for guidelines.
+STL is an open standard. We welcome issues, discussions, and contributions. Specification and documentation contributions belong in this repository; parser and tooling contributions go to [scos-lab/STL-TOOLS](https://github.com/scos-lab/STL-TOOLS) (see its `CONTRIBUTING.md`).
 
 ## Citation
 
