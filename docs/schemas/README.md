@@ -13,6 +13,35 @@ document structures are valid for a particular domain.
 Schemas are **protocol-level documents** — they constrain how knowledge is
 structured within a domain, not the knowledge itself.
 
+### Notes from the field (2026-08-23)
+
+A report from live multi-agent usage — 543 STL statements written by five different
+coding/review agents inside an agent-native PM tool (Kumidai; see
+[Discussion #8](https://github.com/scos-lab/semantic-tension-language/discussions/8)
+and the author's
+[write-up](https://github.com/Scorpse/semantic-tension-language/blob/main/docs/SCHEMA_FEEDBACK_FROM_AGENT_USAGE.md)) —
+showed where schemas and real agent usage diverge. Guidance for schema authors that
+follows from it:
+
+- **Require *a* meta semantic field, not `relation` specifically.** Agents asserting
+  events/outcomes (`gate_pass`, `merge_skip`) invented `kind=` because the schema only
+  offered `relation`; the core vocabulary's slot for that is `action` (see the
+  Ingest Methodology §1.1 mapping note: `kind`(event) → `action`, `kind`(category) → `is_a`).
+- **Enumerate outcomes separately from descriptive `status`.** A governed
+  `outcome` enum (`pass | fail | warn | skip | blocked | pending | no_change`) lets
+  consumers route by lookup; free-text status strings like `exit_0_no_errors` or
+  `5_pass_3_warn_0_fail` were misread as failures by substring matching.
+- **Define both urgency axes if both exist:** `priority` (scheduling — who acts
+  first) vs `severity` (risk — how bad if unhandled). Agents chose `priority 0–3`;
+  the schemas governed only `severity`.
+- **Agent-coordination fields** (`owner`, `notify`, `obligation`, `claim`/`release`/
+  `handoff`, `run_id`) have no schema home yet; community profiles
+  (`software-review`, `software-agentcoord`) are welcome here. Before writing them, note
+  that board-level coordination semantics already exist in the
+  [Board-as-Spec Protocol](../../spec/board-as-spec-protocol.md) §6 and the
+  [Intent Contract](../../spec/intent-contract-spec.md) notification tier — cross-reference
+  rather than duplicate.
+
 ## Directory Structure
 
 ```

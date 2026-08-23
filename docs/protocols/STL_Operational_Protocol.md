@@ -162,15 +162,16 @@ Every well-formed STL edge should carry at least one meta semantic field. The `(
 
 | Meta Field | Semantics | Example |
 |------------|-----------|---------|
-| `relation` | General relationship | `::mod(relation="师傅")`, `::mod(relation="causes")` |
+| `relation` | General relationship — **last resort**; prefer a specific field below | `::mod(relation="师傅")`, `::mod(relation="causes")` |
 | `status` | State of being | `::mod(status="deceased")`, `::mod(status="active")` |
 | `role` | Role in a structure | `::mod(role="leader")`, `::mod(role="member")` |
-| `type` | Type classification | `::mod(type="person")`, `::mod(type="location")` |
-| `kind` | Kind/variety | `::mod(kind="weapon")`, `::mod(kind="herb")` |
-| `is_a` | Taxonomic relationship | `::mod(is_a="martial_art")` |
-| `action` | Action/behavior | `::mod(action="purchase")`, `::mod(action="喝酒")` |
-| `predicate` | Generic predicate (legacy compat) | `::mod(predicate="teaches")` |
+| `is_a` | Taxonomic relationship / classification | `::mod(is_a="martial_art")` |
+| `action` | Action / behavior / **point-in-time event or outcome** | `::mod(action="purchase")`, `::mod(action="gate_pass")` |
 | `phase` | Phase/stage | `::mod(phase="current")`, `::mod(phase="completed")` |
+| ~~`type`~~, ~~`kind`~~ | *Retired in v1.2* → `is_a` (category) or `action` (event) | — |
+| ~~`predicate`~~ | *Retired in v1.2* → `action` or `role` | — |
+
+*Field note (2026-08-23):* a report from live multi-agent STL traffic (543 statements, [Discussion #8](https://github.com/scos-lab/semantic-tension-language/discussions/8)) showed agents coining `kind=<event>` when a schema required `relation` alone. The mapping is `kind`(event) → `action`, `kind`(category) → `is_a`; schemas SHOULD require *a* meta semantic field, not `relation` specifically. See the Ingest Methodology §1.1 mapping note.
 
 **Supersede detection:** When two edges share the same `(source, meta_field, meta_value)` but have different targets, the newer edge (by `created_at`) is a candidate correction of the older one. Systems may flag the older edge as `suspected_supersede=true` to assist downstream reasoning.
 

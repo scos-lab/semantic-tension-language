@@ -1,6 +1,6 @@
 # Eval-Verdict Vocabulary Specification
 
-> **Version:** 0.1 (Public Draft)
+> **Version:** 0.1 (Public Draft; 2026-08-23: §7 rationale note on enumerated verdicts, informative — no normative change)
 > **Status:** Public Draft — feedback welcome via the STL repository
 > **License:** CC BY 4.0
 > **Date:** 2026-08-13
@@ -147,6 +147,8 @@ A deliberate verification act SHOULD be recorded with:
 | `surfaces` | Which surfaces this act covered (V6). |
 
 A `refuted` or `confirmed` verdict recorded with `instrument_validated=false` is downgraded to `inconclusive` by conforming consumers.
+
+*Rationale for enumerated verdicts (informative, added 2026-08-23).* The verdict field is a closed enumeration, and task status sets elsewhere in the suite are likewise closed, because descriptive free text is read by machines as well as people. A field report from live multi-agent STL traffic (543 statements; [Discussion #8](https://github.com/scos-lab/semantic-tension-language/discussions/8)) found *successful* outcomes recorded as `exit_0_no_errors`, `5_pass_3_warn_0_fail` and `merges_without_conflict` — strings that substring-matching consumers classified as failures. Enumerate the outcome for machines; keep the description for humans; never let the second stand in for the first.
 
 STL form (informative):
 

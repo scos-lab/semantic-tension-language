@@ -68,6 +68,12 @@ Meta semantic fields define **the nature of the relationship** between source an
 - ~~`type`~~, ~~`kind`~~ → use `is_a` instead
 - ~~`predicate`~~ → use `action` or `role` instead
 
+**Mapping note for agent-written STL (added 2026-08-23).** A field report from live multi-agent traffic (543 statements; Kumidai, an agent-native PM tool — see [Discussion #8](https://github.com/scos-lab/semantic-tension-language/discussions/8)) found agents tagging every statement with `kind=<event>` (`gate_pass`, `merge_skip`, `qa_fail`, …) and never emitting `relation`. Both halves are consistent with this methodology once mapped:
+- `kind` used as an **event / outcome verb** → **`action`** (`action="gate_pass"` = *the gate passed*). `action` is the slot for point-in-time events, not only for causal links.
+- `kind` used as a **category** → **`is_a`**.
+- `relation` is the last resort by design; a schema that *requires* `relation` alone will push agents to invent a field. Schema authors: require "at least one meta semantic field", not `relation` specifically.
+- An **outcome** (`pass | fail | warn | skip | blocked | pending | no_change`) belongs in an enumerated field, kept separate from free-text `status`; success strings such as `exit_0_no_errors` or `5_pass_3_warn_0_fail` are real examples of descriptive status misread as failure by substring-matching consumers.
+
 ### 1.2 Computational Modifiers (the edge's weight)
 
 These are not just metadata — **the STG engine reads them at runtime** and they directly affect propagation, pruning, and ranking.
