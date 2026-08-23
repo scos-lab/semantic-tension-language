@@ -1,0 +1,84 @@
+# Software Agent-Coordination Schema  (DRAFT — community profile)
+#
+# Governs agent-to-agent COORDINATION edges: work ownership, the human loop,
+# sequencing, and lane run-reporting. Companion to software-review.
+#
+# Design notes: docs/schemas/agent-comms.md
+# Grounded in a field report of live multi-agent STL (scos-lab discussion #8).
+#
+# STATUS: draft. The closed vocabulary below (action/outcome/provenance/nodes)
+# validates on stl-parser 1.10.2. Two rules are DEFERRED to the STL-TOOLS
+# engine branch (resolver hook + cross-statement requirement): (a) action-keyed
+# edge typing, (b) role-binding / unsatisfiable-gate detection. Until they land,
+# those are documented here and in agent-comms.md, not machine-enforced.
+
+schema SoftwareAgentCoord v0.1 {
+    namespace "Coord"
+
+    # Node types carry a name-prefix (before `_`); the `Coord` namespace keeps
+    # them from colliding with the software-* family in composite validation.
+    anchor source {
+        namespace: required("Coord")
+        pattern: /(Agent|Claim|State|WorkItem|Epic|Question|Blocker|Queue|Lane|Run|Dependency|Routine|Human)_[A-Za-z0-9_]+/
+    }
+    anchor target {
+        pattern: /(Agent|Claim|State|WorkItem|Epic|Question|Blocker|Queue|Lane|Run|Dependency|Routine|Human|Artifact|Revision)_[A-Za-z0-9_]+/
+    }
+
+    modifier {
+        required: [action, priority, confidence, provenance, source, author, timestamp]
+        optional: [outcome, status, about_phase, certainty, obligation, owner, notify,
+                   run_id, work_item, verifier, claimant, note, detail]
+
+        # --- the speech-act (de-fused from outcome; node/prefix + action, never a fused verb) ---
+        action: enum("claim", "release", "reclaim", "handoff", "question", "blocks",
+                     "acknowledge", "promote", "epic_sequence", "route", "decision",
+                     "request", "run_summary", "lane_report", "no_change")
+
+        # --- the one machine-decision axis ---
+        outcome: enum("pass", "fail", "warn", "skip", "blocked", "pending", "no_change")
+
+        # --- how the record knows (Eval-Verdict provenance) ---
+        provenance: enum("verified", "reported", "claimed", "inferred")
+
+        # --- scheduling urgency (0 blocking/critical .. 3 optional); distinct from severity ---
+        priority: integer
+
+        # --- calibrated epistemic strength (six canonical levels are SHOULD; see agent-comms.md) ---
+        confidence: float(0.0, 1.0)
+        certainty: float(0.0, 1.0)
+
+        # --- lifecycle CONTEXT only: a claim about a stage, never a state transition (owner Q1).
+        #     The authoritative lifecycle is the platform's state record. ---
+        about_phase: enum("backlog", "ready", "coding", "testing", "deployed", "closed")
+
+        obligation: enum("must", "should", "may")
+        status: string
+        note: string
+        detail: string
+        # author/owner/notify/verifier/claimant are resolved against an EXTERNAL identity
+        # registry at validation time (resolver hook) — not enumerated in this profile.
+        author: string
+        owner: string
+        notify: string
+        verifier: string
+        claimant: string
+        source: string(/(https|git|kumidai|sha256|file).+/)
+        run_id: string(/[a-z0-9_]+/)
+        work_item: string(/[A-Z]+-[0-9]+/)
+        timestamp: datetime
+    }
+
+    # DEFERRED (engine branch): action-keyed edge rules. Documented intent —
+    #   Agent  -claim/release/reclaim->  Claim/State
+    #   WorkItem -question/blocks->       Question/Blocker/State
+    #   Artifact -handoff->               WorkItem      (obligation="must", records verifier/claimant)
+    #   Lane   -lane_report/run_summary-> Run
+    # Until the engine supports action-keyed edges, no `edge {}` block is declared
+    # (a relation-keyed block would mis-model this).
+
+    constraints {
+        min_statements: 1
+        max_statements: 2000
+    }
+}

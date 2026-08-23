@@ -1,0 +1,77 @@
+# Software Review Schema  (DRAFT — community profile)
+#
+# Governs agent-to-agent REVIEW edges: gates, QA, independence, merges, patches,
+# and the assessment layer (findings, evidence). Companion to software-agentcoord.
+#
+# Design notes: docs/schemas/agent-comms.md
+#
+# STATUS: draft. Closed vocabulary validates on stl-parser 1.10.2. Action-keyed
+# edge typing and role-binding/gate-satisfiability are DEFERRED to the STL-TOOLS
+# engine branch (resolver hook + cross-statement requirement rule).
+
+schema SoftwareReview v0.1 {
+    namespace "Review"
+
+    anchor source {
+        namespace: required("Review")
+        pattern: /(Gate|Check|Verifier|Guard|Finding|RequiredAction|Patch|Acceptance|Evidence|Defect|Run|Lane|Revision)_[A-Za-z0-9_]+/
+    }
+    anchor target {
+        pattern: /(Gate|Check|Verifier|Guard|Finding|RequiredAction|Patch|Acceptance|Evidence|Defect|Run|Lane|Revision|WorkItem|Branch|Artifact|Commit)_[A-Za-z0-9_]+/
+    }
+
+    modifier {
+        required: [action, priority, confidence, provenance, source, author, timestamp]
+        optional: [outcome, status, severity, about_phase, certainty, obligation, owner,
+                   notify, run_id, work_item, verifier, claimant, commit, command, result,
+                   note, detail]
+
+        # verbs are speech-acts; pass/fail lives on `outcome`, never fused into the verb.
+        # validate = self-check, verify = independent (owner Q2). Independence is made
+        # checkable by recording `verifier` and `claimant`; a validator can test verifier != claimant.
+        action: enum("gate", "check", "validate", "verify", "merge", "patch", "bounce",
+                     "accept", "require", "finding", "evidence", "independence", "correction")
+
+        outcome: enum("pass", "fail", "warn", "skip", "blocked", "pending", "no_change")
+        provenance: enum("verified", "reported", "claimed", "inferred")
+
+        priority: integer
+        confidence: float(0.0, 1.0)
+        certainty: float(0.0, 1.0)
+
+        # risk/impact axis — distinct from priority (scheduling). Assessment edges only.
+        severity: enum("critical", "high", "medium", "low", "info")
+
+        about_phase: enum("backlog", "ready", "coding", "testing", "deployed", "closed")
+        obligation: enum("must", "should", "may")
+        status: string
+        command: string
+        result: string
+        note: string
+        detail: string
+        author: string
+        owner: string
+        notify: string
+        verifier: string
+        claimant: string
+        commit: string(/[A-Fa-f0-9]{7,64}/)
+        source: string(/(https|git|kumidai|sha256|file).+/)
+        run_id: string(/[a-z0-9_]+/)
+        work_item: string(/[A-Z]+-[0-9]+/)
+        timestamp: datetime
+    }
+
+    # DEFERRED (engine branch): action-keyed edge rules + role binding. Documented intent —
+    #   Gate/Check -gate/check->    Branch/WorkItem      (outcome required)
+    #   Verifier   -verify->        Artifact/Revision    (require: verifier bound & != claimant)
+    #   Verifier   -merge->         WorkItem             (require: a prior verify outcome=pass by an
+    #                                                     independent, registry-resolved identity)
+    #   Finding/RequiredAction -finding/require-> WorkItem/Artifact  (severity on findings)
+    # A `merge` gate whose required independent `verify` binding is unresolved MUST fail
+    # validation naming the missing binding (fixes the SPECIALIST_QA deadlock).
+
+    constraints {
+        min_statements: 1
+        max_statements: 2000
+    }
+}
