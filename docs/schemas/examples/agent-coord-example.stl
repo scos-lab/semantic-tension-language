@@ -1,0 +1,4 @@
+# Coordination-lane edges (decontaminated).
+[Coord:Agent_codex] -> [Coord:Claim_run_abcd] ::mod(action="claim", priority=1, confidence=1.0, provenance="reported", source="kumidai://TASK-100", author="codex", work_item="TASK-100", run_id="review_run_abcd", timestamp="2026-08-23T09:00:00Z")
+[Coord:Claim_run_abcd] -> [Coord:State_Released] ::mod(action="release", outcome="pass", priority=1, confidence=1.0, provenance="reported", source="kumidai://TASK-100", author="codex", run_id="review_run_abcd", timestamp="2026-08-23T10:00:00Z")
+[Coord:WorkItem_TASK_100] -> [Coord:Question_Owner] ::mod(action="question", about_phase="coding", obligation="must", priority=0, confidence=1.0, provenance="reported", source="kumidai://TASK-100", author="codex", owner="Adi", notify="@Adi", timestamp="2026-08-23T09:30:00Z")
