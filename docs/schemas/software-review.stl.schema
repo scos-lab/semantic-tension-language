@@ -5,11 +5,15 @@
 #
 # Design notes: docs/schemas/agent-comms.md
 #
-# STATUS: draft. Closed vocabulary validates on stl-parser 1.10.2. Action-keyed
-# edge typing and role-binding/gate-satisfiability are DEFERRED to the STL-TOOLS
-# engine branch (resolver hook + cross-statement requirement rule).
+# STATUS: draft. Requires stl-parser >= 1.11.0 (the require{} cross-statement rule
+# + resolvers= hook). The merge-gate requirement below is now ENFORCED: a merge
+# with no independent, registry-resolved verify=pass fails validation (E612) —
+# the SPECIALIST_QA deadlock becomes a validation error. The host supplies the
+# identity registry at validation time via resolvers={"identity": fn}; without a
+# resolver the gate fails closed (unresolvable gate). Action-keyed edge typing
+# remains deferred until the engine keys edge rules on action.
 
-schema SoftwareReview v0.1 {
+schema SoftwareReview v0.2 {
     namespace "Review"
 
     anchor source {
@@ -61,14 +65,24 @@ schema SoftwareReview v0.1 {
         timestamp: datetime
     }
 
-    # DEFERRED (engine branch): action-keyed edge rules + role binding. Documented intent —
-    #   Gate/Check -gate/check->    Branch/WorkItem      (outcome required)
-    #   Verifier   -verify->        Artifact/Revision    (require: verifier bound & != claimant)
-    #   Verifier   -merge->         WorkItem             (require: a prior verify outcome=pass by an
-    #                                                     independent, registry-resolved identity)
-    #   Finding/RequiredAction -finding/require-> WorkItem/Artifact  (severity on findings)
-    # A `merge` gate whose required independent `verify` binding is unresolved MUST fail
-    # validation naming the missing binding (fixes the SPECIALIST_QA deadlock).
+    # ENFORCED (stl-parser >= 1.11.0): a merge is valid only if the document also
+    # carries an independent, registry-resolved verify with outcome=pass. Independence
+    # = verifier != claimant on the verify edge; the "identity" resolver (host-supplied)
+    # confirms the verifier is a real, eligible member. Unsatisfiable -> E612, naming the
+    # missing binding. This is the structural fix for the SPECIALIST_QA deadlock: a merge
+    # gate required from a role bound to nobody can no longer sit silently — it fails.
+    require {
+        action: "merge"
+        binding: "verify"
+        outcome: "pass"
+        independent: true
+        resolver: "identity"
+    }
+
+    # STILL DEFERRED (needs action-keyed edge rules in the engine): typing which action
+    # is legal between which node types, e.g. Gate -gate-> Branch, Verifier -verify->
+    # Revision, Finding -finding-> WorkItem. The require rule above governs cross-statement
+    # obligations; per-edge node-typing waits on edge{} keying on action rather than relation.
 
     constraints {
         min_statements: 1
