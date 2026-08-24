@@ -18,7 +18,7 @@ Complete reference for all STL parser error codes (E001-E962) and warning codes 
 | E400-E404 | File I/O errors | `STLFileError` |
 | E450-E453 | Query errors | `STLQueryError` |
 | E500-E502 | Builder errors | `STLBuilderError` |
-| E600-E603 | Schema errors | `STLSchemaError` |
+| E600-E612 | Schema errors | `STLSchemaError` |
 | E700-E702 | LLM errors | `STLLLMError` |
 | E800-E801 | Emitter errors | `STLEmitterError` |
 | E900-E901 | Decay errors | `STLDecayError` |
@@ -156,7 +156,7 @@ Raised by the programmatic builder API.
 
 ---
 
-## Schema Errors (E600-E603)
+## Schema Errors (E600-E612)
 
 Raised during schema loading and validation.
 
@@ -166,6 +166,15 @@ Raised during schema loading and validation.
 | E601 | Schema validation error | Document fails schema validation | Fix statements to conform to schema constraints |
 | E602 | Schema not found | Schema file does not exist | Check the schema file path |
 | E603 | Schema conflict | Schema rules conflict with each other | Review and fix conflicting schema rules |
+| E604 | Field type mismatch | Modifier value has the wrong type (strict: int is not bool/float) | Fix the field value type |
+| E605 | Document count | Statement count outside `min/max_statements` | Adjust the document or the bounds |
+| E606 | Anchor violation | Anchor namespace or name pattern not satisfied | Rename the anchor or fix the schema pattern |
+| E607 | Missing required field | A `required:` modifier field is absent | Add the missing field |
+| E608 | Chain too long | A path exceeds `max_chain_length` | Shorten the chain or raise the bound |
+| E609 | Cycle forbidden | Document has a cycle with `allow_cycles: false` | Break the cycle or allow cycles |
+| E610 | Profile routing | Statement matches no registered profile | Add the namespace to a profile or fix the anchor |
+| E611 | Edge rule violation | Statement matches no declared `edge {}` rule | Use a legal source/relation/target combination |
+| E612 | Unsatisfied requirement | A `require {}` cross-statement rule is unmet (missing binding, dependence, or unresolvable identity — fails closed without a resolver) | Add the required binding statement or supply the named resolver |
 
 ---
 
@@ -279,7 +288,7 @@ Exception
     ├── STLFileError         (E400-E404)
     ├── STLQueryError        (E450-E453)
     ├── STLBuilderError      (E500-E502)
-    ├── STLSchemaError       (E600-E603)
+    ├── STLSchemaError       (E600-E612)
     ├── STLLLMError          (E700-E702)
     ├── STLEmitterError      (E800-E801)
     ├── STLDecayError        (E900-E901)

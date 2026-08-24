@@ -31,7 +31,7 @@ A comprehensive Python toolkit for working with STL, with feature parity to the 
 |-----------|-------------|
 | **Parse & Serialize** | `parse()`, `to_json()`, `to_stl()`, `to_rdf()` |
 | **Build Programmatically** | `stl("[A]", "[B]").mod(confidence=0.9).build()` |
-| **Schema Validation** | `.stl.schema` format + 6 domain schemas (TCM, medical, legal, ...) |
+| **Schema Validation** | `.stl.schema` format, 8 domain schemas, typed `edge {}` rules, cross-statement `require {}` gates with external identity resolvers (fail-closed E612), multi-schema `.stl.profile` routing |
 | **LLM Output Repair** | `clean()` + `repair()` + `validate_llm_output()` — 3-stage pipeline |
 | **Query & Filter** | `find()`, `filter()`, `select()`, `stl_pointer()` — Django-style operators |
 | **Diff & Patch** | `stl_diff()`, `stl_patch()` — semantic-level comparison |
@@ -98,7 +98,7 @@ Three self-contained specs for delegated agent work — the guided tour is at [s
 ### Project Resources
 - [Project Index](./docs/PROJECT_INDEX.md) — Module reference and architecture overview
 - [Tooling Features (Chinese)](./docs/STL_TOOLING_FEATURES.md) — Detailed feature overview
-- [Schema Ecosystem](./docs/schemas/) — Domain-specific schema library
+- [Schema Ecosystem](./docs/schemas/) — Domain schema library, incl. community agent-communication profiles ([design notes](./docs/schemas/agent-comms.md))
 - [STL as LLM-Program Bridge](./docs/STL_AS_LLM_PROGRAM_BRIDGE.md) — Vision document
 
 ---
@@ -113,7 +113,7 @@ semantic-tension-language/
 │   ├── tutorials/           # Step-by-step learning guides
 │   ├── reference/           # API reference and CLI docs
 │   ├── guides/              # How-to guides
-│   ├── schemas/             # Domain schema library (6 domains)
+│   ├── schemas/             # Domain schema library (8 schemas + profiles)
 │   └── stlc/                # STLC semantic specifications (10 specs)
 └── parser/                  # FROZEN 1.7.x snapshot of stl-parser — canonical source: scos-lab/STL-TOOLS
     ├── stl_parser/          # Source (19 modules)

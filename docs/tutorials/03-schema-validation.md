@@ -6,8 +6,9 @@ Learn how to validate STL documents against domain-specific schemas.
 - Load `.stl.schema` files with `load_schema()`
 - Validate documents with `validate_against_schema()`
 - Understand schema syntax: namespaces, anchor patterns, modifier constraints
-- Use the 6 built-in domain schemas
+- Use the built-in domain schemas
 - Create your own schemas
+- Where to go for edge rules, cross-statement requirements, and profiles
 
 **Prerequisites:** [Tutorial 2: Building](02-building.md)
 
@@ -96,7 +97,7 @@ schema SchemaName v1.0 {
 }
 ```
 
-## Step 5: The 6 Built-In Schemas
+## Step 5: The Built-In Schemas
 
 | Schema | File | Key Constraints |
 |--------|------|----------------|
@@ -106,6 +107,11 @@ schema SchemaName v1.0 {
 | **Historical** | `historical.stl.schema` | `time` + `source` required, multi-script support |
 | **Medical** | `medical.stl.schema` | Prefixed anchors (Symptom_, Drug_, Condition_, ...) |
 | **Legal** | `legal.stl.schema` | Prefixed anchors (Law_, Regulation_, Precedent_, ...) |
+| **Agent coordination** | `software-agentcoord.stl.schema` | DRAFT — closed `action`/`outcome`/`provenance` enums for multi-agent traffic |
+| **Agent review** | `software-review.stl.schema` | DRAFT — review/merge-gate edges; `require {}` merge gate (needs 1.11.0+) |
+
+The two `software-*` schemas are community-contributed drafts — design notes in
+[`agent-comms.md`](../schemas/agent-comms.md).
 
 ### Example: Using the Scientific Schema
 
@@ -226,6 +232,31 @@ result = validate_llm_output(
 print(f"Valid: {result.is_valid}")
 print(f"Repairs: {len(result.repairs)}")
 ```
+
+## Step 9: Beyond Field Validation (1.10.0+ / 1.11.0+)
+
+Three schema capabilities go past per-statement field checks — covered in
+[How-To: Create Custom Schemas](../guides/custom-schemas.md):
+
+- **`edge {}` rules** — restrict which source-type / relation / target-type
+  combinations are legal (`E611`).
+- **`require {}` rules** — cross-statement obligations with an external
+  identity resolver: e.g. *a `merge` is only valid if the document also carries
+  an independent `verify` with `outcome="pass"`* — otherwise `E612`, fail-closed.
+
+  ```python
+  validation = validate_against_schema(result, schema,
+                                       resolvers={"identity": registry.knows})
+  ```
+
+- **Profiles** — validate documents that mix namespaces by routing each
+  statement to its schema:
+
+  ```python
+  from stl_parser import load_profile, validate_against_profiles
+  profiles = load_profile("docs/schemas/agent.stl.profile")
+  validation = validate_against_profiles(result, profiles)
+  ```
 
 ---
 

@@ -92,8 +92,15 @@ modifier {
 | Integer range | `integer(min, max)` | `priority: integer(1, 10)` |
 | Enum values | `enum("a", "b", "c")` | `rule: enum("causal", "empirical")` |
 | String | `string` | `author: string` |
+| String pattern | `string(/regex/)` | `identifier: string(/[A-Z]+-[0-9]+/)` |
 | DateTime | `datetime` | `timestamp: datetime` |
 | Boolean | `boolean` | `verified: boolean` |
+
+**Strictness (since 1.10.0):** schema parsing is fail-closed — unknown blocks,
+keys, and field types raise `E602` rather than being silently ignored. Typed
+values are strict: `integer` rejects bools and floats, `boolean` requires a
+real bool, `datetime` requires an ISO 8601 string, and `string(/…/)` patterns
+match with `re.fullmatch`.
 
 ---
 
@@ -111,6 +118,86 @@ constraints {
 ```
 
 All constraint fields are optional. Omit any you don't need.
+`max_chain_length` (`E608`) and `allow_cycles: false` (`E609`) are enforced
+since 1.10.0.
+
+---
+
+## Step 3b: Typed Edge Rules (`edge {}` blocks, 1.10.0+)
+
+Repeatable `edge {}` blocks restrict which source-type / relation / target-type
+combinations are legal. When a schema declares any edge rules, every statement
+must match at least one triple (`E611`); schemas without edge blocks behave
+exactly as before.
+
+```
+edge {
+    source: [Gate, Check]
+    relation: [gate, check]
+    target: [Branch, WorkItem]
+}
+
+edge {
+    source: [Verifier]
+    relation: [verify]
+    target: [Artifact, Revision]
+}
+```
+
+---
+
+## Step 3c: Cross-Statement Requirements (`require {}` blocks, 1.11.0+)
+
+A `require {}` block makes one kind of statement conditional on the presence of
+another — across the whole document. A statement whose `action` equals the
+trigger is valid only if the document also contains a satisfying binding
+statement; otherwise validation fails with `E612`, naming exactly what is
+missing.
+
+```
+require {
+    action: "merge"          # trigger: statements with action="merge"
+    binding: "verify"        # require a statement with action="verify"
+    outcome: "pass"          # …whose outcome is "pass"
+    independent: true        # …with verifier != claimant on the binding
+    resolver: "identity"     # …whose verifier resolves via this named resolver
+}
+```
+
+The identity registry stays **external to the engine**: supply resolvers at
+validation time —
+
+```python
+validation = validate_against_schema(result, schema,
+                                     resolvers={"identity": my_registry.knows})
+```
+
+If a required resolver is not supplied, the gate **fails closed** (`E612`).
+This is the structural fix for silent approval deadlocks — a gate required
+from a role bound to nobody becomes a validation error instead of a stall.
+See [`docs/schemas/software-review.stl.schema`](../schemas/software-review.stl.schema)
+for a real deployment and [`docs/schemas/agent-comms.md`](../schemas/agent-comms.md)
+for the field report that motivated it.
+
+---
+
+## Step 3d: Multi-Schema Profiles (`.stl.profile`, 1.10.0+)
+
+When one document mixes namespaces (e.g. agent coordination + review traffic),
+a profile manifest routes each statement to its schema:
+
+```python
+from stl_parser import load_profile, validate_against_profiles
+
+profiles = load_profile("docs/schemas/agent.stl.profile")   # {namespace: STLSchema}
+validation = validate_against_profiles(result, profiles,
+                                       resolvers={"identity": my_registry.knows})
+```
+
+Statements route by source namespace (or unique anchor-prefix match);
+cross-namespace targets are validated against every registered profile; the
+strictest composite graph constraints win (any profile forbidding cycles
+forbids them; smallest `max_chain_length` applies).
 
 ---
 
@@ -265,7 +352,7 @@ Exit code 0 = valid, 1 = errors found.
 
 ## Built-in Schemas
 
-STL ships with several domain schemas in `docs/schemas/`:
+STL ships with domain schemas in `docs/schemas/`:
 
 | Schema | Domain | Required Fields |
 |--------|--------|-----------------|
@@ -274,9 +361,16 @@ STL ships with several domain schemas in `docs/schemas/`:
 | `medical.stl.schema` | Medical/clinical | confidence, rule, source, domain |
 | `historical.stl.schema` | Historical knowledge | confidence, time, source |
 | `legal.stl.schema` | Legal reasoning | confidence, rule, source |
+| `tcm.stl.schema` | Traditional Chinese Medicine | confidence, domain (Unicode anchors) |
+| `software-agentcoord.stl.schema` | Multi-agent coordination (DRAFT) | action, outcome, provenance, … |
+| `software-review.stl.schema` | Agent code review + merge gates (DRAFT) | action, outcome, provenance, … |
 | `_template.stl.schema` | Starting template | confidence |
 
-Use the template as a starting point for your own schemas.
+Use the template as a starting point for your own schemas. The two `software-*`
+profiles are community-contributed drafts grounded in a field report of live
+multi-agent STL traffic — design notes in
+[`docs/schemas/agent-comms.md`](../schemas/agent-comms.md); `software-review`
+uses `edge {}` + `require {}` end to end.
 
 ---
 
