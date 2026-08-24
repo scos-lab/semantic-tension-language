@@ -1,6 +1,6 @@
 # Eval-Verdict Vocabulary Specification
 
-> **Version:** 0.1 (Public Draft; 2026-08-23: §7 rationale note on enumerated verdicts, informative — no normative change)
+> **Version:** 0.2 (Public Draft; v0.1: 2026-08-23 §7 rationale note on enumerated verdicts, informative. v0.1→v0.2: added V9 evidence reproducibility and V10 time-series gates, with C14/C15 — both from measured failures in a live deployment; see Appendix B.)
 > **Status:** Public Draft — feedback welcome via the STL repository
 > **License:** CC BY 4.0
 > **Date:** 2026-08-13
@@ -132,6 +132,12 @@ Each clause below is normative and stated in executable form. They are ordered b
 **V8 — Absence needs a second instrument.** Checks that enumerate ("everything I produced exists in the source") are blind to deletion and omission; sandboxed or filtered instruments are blind to what they cannot see.
 *Executable form:* claims of completeness or absence ("nothing lost", "no X present") require a reverse check with an independent instrument (sample from the other side; use an unfiltered view) before the verdict `confirmed`.
 
+**V9 — Evidence must be reproducible.** A verdict is only as checkable as the evidence it cites. Evidence produced by a nondeterministic or unbounded process cannot be re-read: a retrieval whose result varies between runs, or a search that may not terminate, yields a citation that no one — including its author — can confirm later.
+*Executable form:* evidence cited by a `verified` verdict MUST be reproducible by an independent party from the citation alone. Where evidence is produced by a retrieval or search process, that process MUST be deterministic given its inputs and MUST have a declared bound on its work; otherwise the verdict is at most `reported`, and the citation MUST record the conditions under which it was obtained.
+
+**V10 — A gate over a shared artifact must be time-series.** When the subject of a check is an artifact that others also write to, passing once is not passing. The check can turn red with no change to the work under test: another party's addition displaces what your criterion required, and every individual reading remains correct while the conclusion drawn from them silently expires.
+*Executable form:* a conformance or quality gate whose subject is shared or growing MUST be re-run against frozen criteria over time, and its verdict MUST carry the observation time. A single-point pass MUST NOT be cited as a standing property. Where a gate ranks or selects a fixed number of items, implementations SHOULD treat displacement — not only the gate's own regression — as a failure mode, since capacity taken by unrelated growth is indistinguishable in the score from the work getting worse.
+
 ---
 
 ## 7. Verdict Records
@@ -178,6 +184,8 @@ STL form (informative):
 - [ ] C11. Overall-correctness claims include a verbatim end-to-end check (V6).
 - [ ] C12. Watchers are themselves monitored; unverified silence is never reported as health (V7).
 - [ ] C13. Completeness/absence claims use a reverse check with an independent instrument (V8).
+- [ ] C14. Evidence cited by `verified` verdicts is reproducible from the citation; nondeterministic or unbounded retrieval caps the verdict at `reported` (V9).
+- [ ] C15. Gates over shared or growing artifacts are re-run over time against frozen criteria and carry observation times; single-point passes are not cited as standing properties (V10).
 
 ---
 
@@ -188,6 +196,8 @@ This vocabulary generalizes an internal epistemics standard (the Truth-Hallucina
 ## Appendix B — Provenance of the discipline clauses (informative)
 
 V1–V8 are not designed rules but distilled ones: each corresponds to a class of false verdicts that actually occurred, repeatedly, during more than a year of long-horizon autonomous agent operation, where they were caught by a human principal or by later contradiction. They are the part of this suite that demo-regime usage never encounters and delegation-regime usage cannot avoid.
+
+V9 and V10 (v0.2) come from a measured deployment rather than from incident recall, and are stated with the evidence available. V9: a retrieval process used to assemble evidence returned different results across processes for the same query, traced to unordered set iteration, and could hang on dense subgraphs — either property makes a citation unconfirmable. V10: a recall gate measured daily against frozen criteria fell from 0.833 to 0.800 (and 0.933 to 0.867 on held-out cases) within hours, with no change to the system under test; the cause was located precisely — an unrelated party's single addition to a shared graph entered the ranked window and displaced one required item per case. Both readings come from one deployment over a short observation period; the mechanisms are general, the magnitudes are not claimed to be.
 
 ---
 
