@@ -11,7 +11,12 @@ the vocabulary stays bounded and consumers route by field rather than by substri
 Grounded in a field report of live multi-agent STL traffic (scos-lab
 [discussion #8](https://github.com/scos-lab/semantic-tension-language/discussions/8)):
 agents converged on a shared operational envelope but sprawled everywhere the schema left
-open (108 `kind` verbs, `status` doing three jobs, no `outcome`, confidence pinned at 1.0).
+open (108 `kind` verbs [^scrape], `status` doing three jobs, no `outcome`, confidence pinned at 1.0).
+
+[^scrape]: The original field report (Discussion #8) tabulated **45 distinct `kind` values** from
+its 543-statement sample. The **108** here is from the later, larger **1,039-statement re-scrape**
+of the same project (≈627 distinct `source→target+kind` edges across 21 work items). Both counts
+are correct for their sample; 108 > 45 reflects the wider scrape, not a contradiction.
 
 ## The governed envelope (both profiles)
 
@@ -63,18 +68,20 @@ machine-decision axis), `status` (free-text detail, never authoritative), `sever
 
 ## Enforcement status
 
-Enforced today (stl-parser 1.10.2): closed `action`/`outcome`/`provenance`/`severity`/
+Enforced (stl-parser >= 1.10.2): closed `action`/`outcome`/`provenance`/`severity`/
 `obligation`/`about_phase` enums, anchor namespace + name-prefix patterns, `source` shape,
 statement counts.
 
-Deferred to the STL-TOOLS engine branch (resolver hook + cross-statement requirement rule):
-1. **action-keyed edge rules** (which `action` is legal between which node types);
-2. **role binding / gate satisfiability** — a `merge` gate requiring an independent
-   registry-resolved `verify` fails validation, naming the missing binding, when unsatisfiable
-   (this is the structural fix for the SPECIALIST_QA deadlock);
-3. **confidence cap** (`1.0` analytic-only / empirical ≤ `0.95`);
-4. closed modifier sets (reject unknown keys) with a warn-then-enforce sunset.
+Enforced (stl-parser >= 1.11.0, `software-review` v0.2): **role binding / gate satisfiability**
+— via the `require {}` cross-statement rule + `resolvers=` hook. A `merge` with no independent,
+registry-resolved `verify` (`outcome="pass"`) fails validation (**E612**), naming the missing
+binding; without a resolver the gate fails closed. This is the structural fix for the
+SPECIALIST_QA deadlock — a gate required from a role bound to nobody can no longer stall silently.
+The host supplies the registry: `validate_against_profiles(doc, profiles, resolvers={"identity": fn})`.
 
-See the STL-TOOLS branch `feature/agent-comms-engine` for the resolver contract.
+Still deferred (needs the engine to key edge rules on `action`, not `relation`):
+1. **action-keyed edge rules** (which `action` is legal between which node types);
+2. **confidence cap** (`1.0` analytic-only / empirical ≤ `0.95`);
+3. closed modifier sets (reject unknown keys) with a warn-then-enforce sunset.
 
 **These profiles are drafts** for review on discussion #8 — not yet a released standard.
