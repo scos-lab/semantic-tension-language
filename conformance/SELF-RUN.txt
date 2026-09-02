@@ -1,0 +1,80 @@
+# stlconf conformance report — subject: shared-board+solo (reference implementation)
+# generated: 2026-09-02T10:38:28+1000
+
+[PASS] BOARD-C5     (B) Pass writes return next-task + progress feedback
+        claim: write response carried both cursor and progress
+        evidence: PUT item->pass returned keys ['chain', 'cursor', 'item', 'progress']
+[FAIL] BOARD-C13    (B) A blocked task does not freeze the cursor board-wide
+        claim: cursor is None after blocking the first task; §5.2 rule 4 requires it to advance to the next eligible task ('c13 task 2')
+        evidence: blocked T1 on zz-stlconf-9506048; cursor=None
+        negative-control: clean board cursor='ctl task 2' (GREEN — check can pass)
+[PASS] BOARD-C18    (B) Armed detectors are enumerable
+        claim: 12 armed detectors enumerable through the implementation
+        evidence: ps -eo args | _signal-check
+[FAIL] BOARD-C20    (A) Detection interval is bounded against the wall clock
+        claim: 2/2 time: detectors wait on a single unbounded relative sleep (max 184395s). POSIX sleep follows CLOCK_MONOTONIC and does not advance while the host is suspended, so a condition that became true is delivered late by the whole suspend duration, silently.
+        evidence: inspected 2 time: detectors; bound=300s
+        negative-control: synthetic bounded detector not flagged (GREEN)
+[FAIL] BOARD-C21    (B) Lifecycle ops do not silently reverse Principal-set execution state
+        claim: re-running init silently flipped a Principal-paused auto_resume back on, with no warning; the documented revival sequence must order pause AFTER init or the pause is lost
+        evidence: pause->False, re-init->True
+        negative-control: pause alone holds at False (GREEN)
+[PASS] EVAL-C2      (A) Every recorded claim carries exactly one provenance class
+        claim: all 257 outcome records carry exactly one provenance
+        evidence: scanned 257 outcome records on the 40 most recently updated boards
+[PASS] EVAL-C14     (A) `verified` verdicts cite evidence reproducible from the citation
+        claim: all 255 `verified` verdicts cite a non-trivial evidence string
+        evidence: 255 verified verdicts of 257 records
+        negative-control: presence-of-citation only; this check CANNOT confirm the cited evidence actually reproduces — capped at `reported` per V9
+[SKIP] EVAL-C4      (A) Confidence values are drawn from the six canonical levels only
+        claim: outcome records in this implementation carry no confidence field; the clause is unexercised here — NOT evidence of conformance
+[FAIL] BOARD-C1     (C) Authored sources carry structure only; state fields in source are refused
+        claim: a status= field written in the AUTHORED SOURCE was honoured (materialized as 'pass'). §4.1 forbids state in source precisely because re-materialization would then reset live state to the authored snapshot — silent loss of the data the Principal audits.
+        evidence: source declared status=pass; materialized status='pass'
+        negative-control: clean source materialized as 'in_progress' (GREEN)
+[FAIL] BOARD-C4     (C) Cursor is system-maintained; agent writes of in_progress are rejected
+        claim: an agent write of in_progress was ACCEPTED; §5.2 rule 1 makes in_progress system-only in every path, so the cursor can be moved out from under the system
+        evidence: PUT status=in_progress -> item status 'in_progress'
+        negative-control: legal pass write accepted (GREEN)
+[FAIL] BOARD-C11    (C) Only the §5.2 transition set is accepted
+        claim: blocked->pass was ACCEPTED; it is not in the §5.2 set (blocked leaves only via system-written blocked->in_progress), so a halted task can be closed without the halt ever being cleared
+        evidence: blocked -> pass yielded status 'pass'
+        negative-control: in_progress -> pass accepted (GREEN)
+[FAIL] BOARD-C12    (C) Note items carry no status
+        claim: the execution plane stored status='pending' on a NOTE item; §5.1 says notes are context, not work, and the plane MUST NOT store status for them
+        evidence: note.status='pending', task.status='in_progress'
+        negative-control: task item carries status 'in_progress' (GREEN — check discriminates)
+[PASS] BOARD-C2     (B) Materialization merges by slug: live state and appended structure both survive
+        claim: re-materialization preserved live state and carried the appended task
+        evidence: set T1=pass, appended T9 to source, re-materialized board zz-stlconf-9507600
+        negative-control: both arms must hold; either alone would pass a weaker check
+[FAIL] BOARD-C14    (B) An empty cursor is reported with its cause, never as bare silence
+        claim: the cursor is empty and the execution plane reports nothing about WHY — §5.2 rule 5 requires distinguishing all-complete from all-blocked-with-conditions. Bare silence is indistinguishable from having no work left.
+        evidence: all tasks blocked on zz-stlconf-9507818; cursor=None; cause field present=False
+        negative-control: a non-empty cursor short-circuits to INVALID, so this cannot be always-red
+[FAIL] BOARD-C6     (C) Soft halts carry a machine-checkable resume condition
+        claim: a soft halt was recorded with NO resume condition attached; §5.3 requires the halt record to state a machine-checkable resume condition, otherwise the task waits on nothing and the board cannot distinguish it from a stall
+        evidence: set blocked/soft_halt with empty notes -> status='blocked', notes=''
+        negative-control: a second halt was still recordable (GREEN — check is not refusing everything)
+[PASS] BOARD-C16    (A) Wake notifications identify both task and condition
+        claim: all 14 delivered conditions name both task and condition
+        evidence: 14 signal lines on the subject's configured channel
+        negative-control: a bare heartbeat line is not matched as a condition (GREEN)
+[PASS] EVAL-C6      (A) The split case (reliable source, unverifiable content) is representable
+        claim: provenance classes in use: ['inferred', 'reported', 'verified']; 0 records carry an explicit certainty split
+        evidence: 257 records; provenance classes ['inferred', 'reported', 'verified']
+        negative-control: presence-in-corpus only; cannot confirm the split is used CORRECTLY where it applies — capped at `reported`
+[SKIP] INTENT-C1    (D) Intent records carry all three facets
+        claim: OBSERVATION ONLY, no verdict: 15 intent records present, 10 use the §6 semicolon convention for three facets. Whether the three facets are semantically present is not machine-decidable — records were found carrying facets in prose (joined by 'and', or parenthesised) that a separator count cannot see, and §6's separator is a SHOULD, not a MUST. Counting separators would have reported a FAIL against conformant records.
+        evidence: 15 intent records; 10 with >=2 separators
+        negative-control: n/a — level D clauses are not decided by this kit (rule 5)
+[SKIP] INTENT-C7    (A) Re-instantiated plans carry lineage references
+        claim: no plan in this deployment declares itself a T1 re-instantiation, so the clause is unexercised here. NOT conformance — an implementation that simply never re-instantiates cannot demonstrate it would record lineage.
+[PASS] BOARD-C8     (B) Child-board completion auto-propagates to the parent, system-written
+        claim: completing every child task auto-passed the linked parent task
+        evidence: parent=zz-stlconf-9508265 item T1, child=zz-stlconf-c8child-9508354; parent status 'in_progress' -> 'pass'
+        negative-control: parent item was 'in_progress' before child completion (GREEN — transition attributable)
+
+# 20 checks: 8 pass / 9 fail / 3 skipped / 0 invalid
+# conformance over ACTUALLY CHECKED clauses: 8/17 (47%)
+# skipped clauses are NOT counted as conformant.
