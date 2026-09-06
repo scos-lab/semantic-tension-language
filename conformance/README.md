@@ -5,7 +5,7 @@ Checks an implementation against the numbered conformance items published in
 [`spec/board-as-spec-protocol.md`](../spec/board-as-spec-protocol.md), and
 [`spec/eval-verdict-vocabulary.md`](../spec/eval-verdict-vocabulary.md).
 
-**Status: v0.1. 20 checks over 45 published clauses.** Narrow on purpose — see
+**Status: v0.1. 21 checks over 45 published clauses.** Narrow on purpose — see
 *Coverage, honestly* below, and note what the numbers are *not* saying.
 
 ## Why this exists before a reference implementation
@@ -70,15 +70,32 @@ then its violations are invisible.** Both are proposed for the next spec revisio
 
 ## Coverage, honestly
 
-    20 checks: 8 pass / 9 fail / 3 skipped / 0 invalid
-    conformance over ACTUALLY CHECKED clauses: 8/17 (47%)
+    21 checks: 7 pass / 11 fail / 3 skipped / 0 invalid
+    observed at: 2026-09-06T20:41:07+1000
 
-**47% is not this implementation's conformance rate.** It is the pass rate over the
-seventeen clauses the kit currently checks, out of forty-five published. The other
-twenty-eight are untested, and by rule 2 untested is not conformant. Ten of the
-forty-five are not machine-checkable at all — they constrain an agent's judgement or
-a deployer's posture, not interface behaviour — and for those the kit can only record
-whether evidence exists, never whether it is sound.
+    implementation-scoped (reproducible against the impl alone): 5/14 (35%)
+    corpus-scoped (over a shared, growing artifact; MOVES ON ITS OWN): 2/4 (50%)
+    combined: 7/18 (38%)
+
+**The publishable number is 35%, and even that is not "this implementation's
+conformance rate."** It is the pass rate over the fourteen reproducible clauses the
+kit currently checks, out of forty-five published. The other twenty-seven are
+untested, and by rule 2 untested is not conformant.
+
+**Why the split exists.** Four of the checks read a corpus of outcome records that
+this deployment shares with other agents. Between 2026-09-02 and 2026-09-06 the
+combined figure moved 47% -> 35% -> 38% with *no change to the implementation under
+test*: unrelated writers' records entered and left the scanned window, and the corpus
+itself ranged from 353 records to 43 and back. The implementation-scoped half did not
+move at all. This is exactly the failure Eval-Verdict V10/C15 legislates against, and
+the kit reproduced it on itself before we caught it — so the report now carries an
+observation time, names the corpus, and refuses to present a corpus-scoped reading as
+a standing property. **Cite the implementation-scoped figure; treat the rest as
+diagnostics with a timestamp.**
+
+Ten of the forty-five are not machine-checkable at all — they constrain an agent's
+judgement or a deployer's posture, not interface behaviour — and for those the kit can
+only record whether evidence exists, never whether it is sound.
 
 ## Running it
 

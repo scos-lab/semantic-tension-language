@@ -41,6 +41,14 @@ class Result:
     provenance: str = "reported"     # verified | reported | claimed | inferred
     negative_control: str | None = None
     detail: dict = field(default_factory=dict)
+    # V10/C15: a reading taken over a SHARED, GROWING artifact is not a standing
+    # property of the implementation. `corpus` describes what was scanned; the kit
+    # stamps `observed_at` on every result. Measured 2026-09-04: this kit's own
+    # headline moved 47%->35% with NO change to the system under test, because two
+    # unrelated agents' records entered the scanned window -- the exact mechanism
+    # Eval-Verdict Appendix B cites as V10's origin.
+    corpus: str | None = None
+    observed_at: str = ""
 
     def to_stl(self, subject: str) -> str:
         esc = lambda s: str(s).replace('"', "'").replace("\n", " ")
@@ -48,7 +56,10 @@ class Result:
                 f'::mod(role="conformance_verdict", status="{self.status}", '
                 f'provenance="{self.provenance}", level="{self.level}", '
                 f'spec="{esc(self.spec)}", claim="{esc(self.claim)}", '
-                f'evidence="{esc(self.evidence)}")')
+                f'evidence="{esc(self.evidence)}"'
+                + (f', observed_at="{self.observed_at}", corpus="{esc(self.corpus)}"'
+                   f', standing_property="false"' if self.corpus else "")
+                + ')')
 
 
 class Capability:
@@ -110,6 +121,7 @@ def check(clause: str, spec: str, title: str, level: str, needs: tuple[str, ...]
 
 def run_all(adapter: Adapter, only: str | None = None) -> list[Result]:
     out = []
+    observed_at = time.strftime("%Y-%m-%dT%H:%M:%S%z")
     for fn in _REGISTRY:
         m = fn._meta
         if only and only.lower() not in m["clause"].lower():
@@ -118,7 +130,7 @@ def run_all(adapter: Adapter, only: str | None = None) -> list[Result]:
         if missing:
             out.append(Result(m["clause"], m["spec"], m["title"], SKIP, m["level"],
                               claim=f"adapter lacks capability {missing}; NOT evidence of conformance",
-                              provenance="reported"))
+                              provenance="reported", observed_at=observed_at))
             continue
         try:
             r = fn(adapter)
@@ -132,6 +144,7 @@ def run_all(adapter: Adapter, only: str | None = None) -> list[Result]:
                                   f"{r.status.upper()} verdict. Original observation: " + r.claim),
                            evidence=r.evidence, provenance="reported",
                            negative_control=r.negative_control)
+            r.observed_at = observed_at
             out.append(r)
         except Exception:
             out.append(Result(m["clause"], m["spec"], m["title"], INVALID, m["level"],
@@ -157,12 +170,29 @@ def report(results: list[Result], subject: str, as_stl=False) -> str:
             lines.append(f"        evidence: {r.evidence}")
         if r.negative_control:
             lines.append(f"        negative-control: {r.negative_control}")
+        if r.corpus:
+            lines.append(f"        corpus: {r.corpus} (observed {r.observed_at})")
+            lines.append( "        NOT A STANDING PROPERTY (V10/C15): this reading is taken over a shared, "
+                          "growing artifact. It can move without any change to the implementation, so it is "
+                          "valid only for the corpus above at the observation time above.")
     total = len(results)
-    checked = tally.get(PASS, 0) + tally.get(FAIL, 0)
+    decided = [r for r in results if r.status in (PASS, FAIL)]
+    fixed = [r for r in decided if not r.corpus]
+    shared = [r for r in decided if r.corpus]
+    pct = lambda rs: (f"{sum(1 for r in rs if r.status == PASS)}/{len(rs)}"
+                      f" ({100*sum(1 for r in rs if r.status == PASS)//len(rs)}%)") if rs else "0/0"
     lines += ["", f"# {total} checks: "
                   f"{tally.get(PASS,0)} pass / {tally.get(FAIL,0)} fail / "
                   f"{tally.get(SKIP,0)} skipped / {tally.get(INVALID,0)} invalid",
-              f"# conformance over ACTUALLY CHECKED clauses: "
-              f"{tally.get(PASS,0)}/{checked}" + (f" ({100*tally.get(PASS,0)//checked}%)" if checked else ""),
-              "# skipped clauses are NOT counted as conformant."]
+              f"# observed at: {results[0].observed_at if results else ''}",
+              "#",
+              "# conformance over ACTUALLY CHECKED clauses, SPLIT BY REPRODUCIBILITY (V10/C15):",
+              f"#   implementation-scoped (reproducible against the impl alone): {pct(fixed)}",
+              f"#   corpus-scoped (over a shared, growing artifact; MOVES ON ITS OWN): {pct(shared)}",
+              f"#   combined: {pct(decided)}",
+              "#",
+              "# skipped clauses are NOT counted as conformant.",
+              "# The combined figure is NOT citable as a standing property: the corpus-scoped",
+              "# rows above are measured over records this deployment shares with other agents,",
+              "# and change when they write. Cite it only with the observation time."]
     return "\n".join(lines)

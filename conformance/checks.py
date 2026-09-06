@@ -11,6 +11,8 @@ from stlconf import check, Result, Capability, PASS, FAIL, SKIP, INVALID
 SPEC_B = "Board-as-Spec Protocol v0.3"
 SPEC_E = "Eval-Verdict Vocabulary v0.2"
 CANON = {"1.0", "0.95", "0.8", "0.5", "0.2", "0.01"}
+# Eval-Verdict §3.2: exactly four provenance classes.
+PROVENANCE_CLASSES = {"verified", "reported", "claimed", "inferred"}
 
 
 def _fixture(ad, tasks):
@@ -156,13 +158,36 @@ def eval_c2(ad):
     if not recs:
         return Result("EVAL-C2", SPEC_E, "Every recorded claim carries exactly one provenance class",
                       SKIP, "A", claim="no outcome records readable (NOT conformance)")
-    bad = [r for r in recs if len(re.findall(r'provenance="([a-z]+)"', r)) != 1]
+    # §3.2 defines exactly four provenance CLASSES. Two distinct defects fail this
+    # clause and a report that conflates them sends the reader to the wrong place:
+    #   (a) wrong COUNT      -- zero or several provenance attributes on one record
+    #   (b) off-VOCABULARY   -- one attribute, but its value is not one of the four
+    # Measured 2026-09-04: the sole offender was (b) -- provenance="taken_over" --
+    # while the claim text said "zero or multiple", i.e. the right verdict for a
+    # reason that does not exist in the record.
+    miscount, offvocab = [], []
+    for r in recs:
+        vals = re.findall(r'provenance="([a-z_]+)"', r)
+        if len(vals) != 1:
+            miscount.append(r)
+        elif vals[0] not in PROVENANCE_CLASSES:
+            offvocab.append((vals[0], r))
+    bad = miscount + offvocab
     ok = not bad
+    detail = []
+    if miscount:
+        detail.append(f"{len(miscount)} with a provenance-attribute count != 1")
+    if offvocab:
+        seen = sorted({v for v, _ in offvocab})
+        detail.append(f"{len(offvocab)} carrying a value outside the four §3.2 classes {seen}")
     return Result("EVAL-C2", SPEC_E, "Every recorded claim carries exactly one provenance class",
                   PASS if ok else FAIL, "A", provenance="verified",
-                  claim=(f"all {len(recs)} outcome records carry exactly one provenance" if ok
-                         else f"{len(bad)}/{len(recs)} records carry zero or multiple provenance values"),
-                  evidence=f"scanned {len(recs)} outcome records on the 40 most recently updated boards")
+                  claim=(f"all {len(recs)} outcome records carry exactly one of the four §3.2 "
+                         f"provenance classes" if ok
+                         else f"{len(bad)}/{len(recs)} records violate the clause: " + "; ".join(detail)),
+                  evidence=f"scanned {len(recs)} outcome records on the 40 most recently updated boards",
+                  corpus=f"{len(recs)} outcome records on the 40 most-recently-updated boards of the "
+                         f"live shared deployment (written by every agent on it, not only the subject)")
 
 
 # ---------------------------------------------------------------- EVAL-C14 / V9
@@ -181,6 +206,8 @@ def eval_c14(ad):
                   claim=(f"all {len(ver)} `verified` verdicts cite a non-trivial evidence string" if ok
                          else f"{len(bad)}/{len(ver)} `verified` verdicts cite no usable evidence"),
                   evidence=f"{len(ver)} verified verdicts of {len(recs)} records",
+                  corpus=f"{len(recs)} outcome records on the 40 most-recently-updated boards of the "
+                         f"live shared deployment (written by every agent on it, not only the subject)",
                   negative_control="presence-of-citation only; this check CANNOT confirm the cited evidence "
                                    "actually reproduces — capped at `reported` per V9")
 
@@ -199,7 +226,9 @@ def eval_c4(ad):
     return Result("EVAL-C4", SPEC_E, "Confidence values are drawn from the six canonical levels only",
                   PASS if not bad else FAIL, "A", provenance="verified",
                   claim=f"{len(vals)} confidence values, {len(bad)} off-canon",
-                  evidence=f"off-canon sample: {sorted(set(bad))[:6]}")
+                  evidence=f"off-canon sample: {sorted(set(bad))[:6]}",
+                  corpus=f"{len(recs)} outcome records on the 40 most-recently-updated boards of the "
+                         f"live shared deployment (written by every agent on it, not only the subject)")
 
 
 # ================================================================ KitBreadth batch (2026-09-02)
@@ -448,6 +477,8 @@ def board_c16(ad):
                   claim=(f"all {len(sig)} delivered conditions name both task and condition" if ok
                          else f"{len(sig)-len(good)}/{len(sig)} notifications fail to identify task+condition"),
                   evidence=f"{len(sig)} signal lines on the subject's configured channel",
+                  corpus=f"{len(sig)} delivered notification lines on the subject's append-only "
+                         f"channel (grows with every signal; a later malformed line can flip this)",
                   negative_control="a bare heartbeat line is not matched as a condition (GREEN)")
 
 
@@ -472,6 +503,8 @@ def eval_c6(ad):
                          "every record collapses to verified/inferred; the reliable-source-but-"
                          "unverifiable-content case has no representation in use"),
                   evidence=f"{len(recs)} records; provenance classes {sorted(provs)}",
+                  corpus=f"{len(recs)} outcome records on the 40 most-recently-updated boards of the "
+                         f"live shared deployment (written by every agent on it, not only the subject)",
                   negative_control="presence-in-corpus only; cannot confirm the split is used CORRECTLY "
                                    "where it applies — capped at `reported`")
 
@@ -500,6 +533,8 @@ def intent_c1(ad):
                          f"§6's separator is a SHOULD, not a MUST. Counting separators would have reported a "
                          f"FAIL against conformant records."),
                   evidence=f"{len(recs)} intent records; {len(structured)} with >=2 separators",
+                  corpus=f"{len(recs)} intent records accumulated across the live deployment "
+                         f"(grows as any agent declares an intent)",
                   negative_control="n/a — level D clauses are not decided by this kit (rule 5)")
 
 
@@ -548,3 +583,74 @@ def board_c8(ad):
                       negative_control=f"parent item was {pre!r} before child completion (GREEN — transition attributable)")
     finally:
         ad.archive_board(child); ad.archive_board(parent)
+
+
+# ---------------------------------------------------------------- BOARD-C10
+@check("BOARD-C10", SPEC_B,
+       "Deletion is recoverable; completed boards go dormant rather than auto-retire", "B",
+       (Capability.BOARD_CRUD,))
+def board_c10(ad):
+    """§4.2 + §7.3, two halves, both driven through the implementation's OWN retire path.
+
+    The kit's `archive_board` is the KIT's file move, not the implementation's deletion.
+    Testing recoverability through it would grade the kit, not the subject, so this check
+    drives PUT {archived:...} — the surface the implementation actually exposes.
+
+    The retire/restore toggle is also this check's negative control: half (a) asserts a
+    completed board is NOT retired, which is vacuous unless the retirement marker can be
+    shown to move at all.
+    """
+    bid = f"zz-stlconf-c10-{int(time.time()*1000)%10**7}"
+    ad.create_board(bid, ["C10 first", "C10 second"])
+    try:
+        # (a) dormancy: drive the board to fully complete, then look at the marker
+        for it in ad.items(bid):
+            if it.get("status") is not None and it.get("type") != "note":
+                ad.set_status(bid, it["id"], "pass")
+        done = [i for i in ad.items(bid) if i.get("status") == "pass"]
+        after = ad.board_summary(bid)
+        # Snapshot the observation NOW. The retire/restore toggle below mutates the very
+        # fields this finding is about, so reading them later to build the message prints
+        # post-toggle state and misattributes the defect (right verdict, wrong stated
+        # reason — the same failure this kit flagged in EVAL-C2 on 2026-09-04).
+        at_completion = after.get("archived_at")
+        listed_at_completion = ad.is_listed(bid)
+        dormant = at_completion in (None, "") and listed_at_completion
+
+        # negative control + (b) recoverability, in one move
+        ad.set_retired(bid, True)
+        retired = ad.board_summary(bid)
+        marker_moves = retired.get("archived_at") not in (None, "")
+        survives_retirement = bool(ad.board_summary(bid).get("items"))  # data not destroyed
+        ad.set_retired(bid, False)
+        restored = ad.board_summary(bid).get("archived_at") in (None, "")
+
+        if not marker_moves:
+            return Result("BOARD-C10", SPEC_B, "Deletion is recoverable; completed boards go dormant",
+                          INVALID, "B", provenance="reported",
+                          claim="negative control FAILED: the retirement marker never moved even when "
+                                "retirement was requested, so 'a completed board is not retired' is "
+                                "uninterpretable here — it would read green against any implementation",
+                          evidence=f"board {bid}: archived_at stayed {retired.get('archived_at')!r}")
+
+        ok = dormant and survives_retirement and restored
+        parts = []
+        if not dormant:
+            parts.append(f"a fully completed board was auto-retired (at completion: "
+                         f"archived_at={at_completion!r}, listed={listed_at_completion}) "
+                         f"— §7.3 requires dormancy, not retirement")
+        if not survives_retirement:
+            parts.append("a retired board's content was destroyed rather than kept recoverable (§4.2)")
+        if not restored:
+            parts.append("retirement could not be undone; §4.2 requires deletion to be recoverable")
+        return Result("BOARD-C10", SPEC_B,
+                      "Deletion is recoverable; completed boards go dormant rather than auto-retire",
+                      PASS if ok else FAIL, "B", provenance="verified",
+                      claim=("completing every task left the board dormant (not retired, still listed); "
+                             "retirement kept the content and was reversible" if ok else "; ".join(parts)),
+                      evidence=f"board {bid}: {len(done)} tasks passed; archived_at None->"
+                               f"{retired.get('archived_at')!r}->None",
+                      negative_control="the retire/restore toggle was exercised on the same board and the "
+                                       "marker did move, so the dormancy assertion is not always-true")
+    finally:
+        ad.archive_board(bid)

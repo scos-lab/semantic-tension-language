@@ -5,7 +5,7 @@ is the natural first subject — and, per the P3 gate decision, the one whose
 conformance must be published honestly before any reference implementation ships.
 """
 from __future__ import annotations
-import json, os, re, subprocess, time, urllib.request
+import json, os, re, subprocess, time, urllib.request, urllib.error
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).parent))
@@ -19,7 +19,9 @@ from stlconf import Adapter, Capability
 API = os.environ.get("STLCONF_API", "http://127.0.0.1:8800")
 BOARDS = Path(os.environ.get("STLCONF_BOARDS_DIR",
                              Path.home() / "repos/shared-board/data/boards")).expanduser()
-JSONDIR = BOARDS.parent / ".json"
+# NOTE: the derived-JSON directory is deliberately NOT exposed as a constant.
+# Reaching into data/.json/ directly is exactly what stranded 276 snapshots;
+# board removal goes through teardown_board() -> DELETE /api/boards/<id>.
 _SOLO = Path(os.environ.get("STLCONF_SOLO_HOME", Path.home() / ".solo")).expanduser()
 SESSIONS = _SOLO / "sessions"
 SIGNALS = _SOLO / "signals"
@@ -31,6 +33,36 @@ def _http(method, path, body=None):
                                  headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=15) as r:
         return json.loads(r.read().decode() or "{}")
+
+
+def teardown_board(board_id, archive_dir=None):
+    """Remove a fixture board through the implementation's OWN delete path.
+
+    A board exists as TWO files: the derived JSON (data/.json/<id>.json) and a
+    snapshot (data/snapshots/<category>/<slug>.stl). Only DELETE /api/boards/<id>
+    handles both -- it archives the JSON reversibly and lets the server clear the
+    snapshot via _refresh_group. Moving the JSON directly (what this kit did until
+    2026-09-06) deletes one half and strands the other: 276 orphaned kitfixture
+    snapshots accumulated from 09-02, found by another line's orphan scan.
+    Verified 2026-09-06 on a throwaway board: 200 + archived_to, JSON archived,
+    snapshot cleared, source .stl left behind, second DELETE returns 404.
+
+    DELETE does NOT remove the authored source, so a fixture that wrote a .stl must
+    also clear that side or the next GET /api/boards re-materializes the board.
+    The source is archived rather than deleted, keeping teardown reversible (§4.5).
+    """
+    try:
+        _http("DELETE", f"/api/boards/{board_id}")
+    except urllib.error.HTTPError as e:
+        if e.code != 404:                      # 404 = already gone; teardown is idempotent
+            raise
+    src = BOARDS / f"{board_id}.stl"
+    if src.exists():
+        if archive_dir is not None:
+            archive_dir.mkdir(parents=True, exist_ok=True)
+            src.rename(archive_dir / src.name)
+        else:
+            src.unlink()
 
 
 def _sh(cmd):
@@ -91,14 +123,20 @@ class SharedBoardSolo(Adapter):
         return _http("PUT", f"/api/boards/{board_id}/items/{item_id}", body)
 
     def archive_board(self, board_id):
-        arch = BOARDS / "ARCHIVED" / f"stlconf-{self._stamp}"
-        (arch / "json").mkdir(parents=True, exist_ok=True)
-        src = BOARDS / f"{board_id}.stl"
-        if src.exists():
-            src.rename(arch / src.name)
-        j = JSONDIR / f"{board_id}.json"        # materialization is a SECOND surface
-        if j.exists():
-            j.rename(arch / "json" / j.name)
+        teardown_board(board_id, BOARDS / "ARCHIVED" / f"stlconf-{self._stamp}")
+
+    # ---- BOARD_CRUD: retirement surface (C10) ----
+    def board_summary(self, board_id):
+        """The board's own record, including the implementation's retirement marker."""
+        return _http("GET", f"/api/boards/{board_id}")
+
+    def is_listed(self, board_id):
+        return any(isinstance(b, dict) and b.get("id") == board_id
+                   for b in _http("GET", "/api/boards"))
+
+    def set_retired(self, board_id, retired: bool):
+        """Drive the implementation's OWN retire/restore path (not the kit's file move)."""
+        return _http("PUT", f"/api/boards/{board_id}", {"archived": bool(retired)})
 
     # ---- CURSOR ----
     def append_structure(self, board_id, task):
