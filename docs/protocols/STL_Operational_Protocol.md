@@ -55,11 +55,13 @@ STL introduces a **tension-path model** where knowledge flows directionally from
 ✓ [Event_2025_Conference]     // Valid
 ✓ [Physics:Energy]            // Valid (namespaced)
 ✓ [黄帝内经]                   // Valid (Unicode supported)
+✓ [rho.psi.search]            // Valid (v1.2.1: '.' allowed INSIDE an identifier — tool / command ids)
 
 ✗ [Not Valid!]                // Invalid (special character)
 ✗ [Nested [Anchor]]           // Invalid (nesting)
 ✗ [ Spaced Name ]             // Invalid (whitespace)
 ✗ []                          // Invalid (empty)
+✗ [.hidden] / [a..b] / [x.]   // Invalid (dot first, doubled, or last)
 ```
 
 **Arrows:**
@@ -109,6 +111,7 @@ STL introduces a **tension-path model** where knowledge flows directionally from
 - Use underscore for separation: `[Theory_Relativity]`
 - Preserve original case for names: `[AlbertEinstein]`
 - Use namespace for disambiguation: `[Physics:Energy]`, `[Psychology:Energy]`
+- Dotted identifiers name programs, tools and command ids verbatim: `[rho.psi.search]`, `[memory.remember]` (v1.2.1, 2026-09-10 — the tool-calling convention shared by SKC CLI and Rho AI: `[Tool] -> [rho.psi.search] ::mod(query="…")`, single-anchor short form `[rho.psi.search] ::mod(…)`)
 
 **Domain-Specific:**
 - Chinese/Unicode fully supported: `[黄帝内经]`, `[素问]`
@@ -1167,7 +1170,7 @@ explicitly.
 
 ---
 
-**Version:** 1.2.0
+**Version:** 1.2.1 (2026-09-10: dotted identifiers — `[rho.psi.search]` — valid inside an anchor; namespace `[A.B:Name]` unchanged)
 **Date:** 2026-05-13
 **Status:** Production
 **Specification Compliance:** STL Core v1.0 + Supplement v1.0
